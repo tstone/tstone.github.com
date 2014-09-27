@@ -1,0 +1,539 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Blog Name</title>
+  <subtitle>Blog subtitle</subtitle>
+  <id>http://blog.url.com/</id>
+  <link href="http://blog.url.com/"/>
+  <link href="http://blog.url.com/feed.xml" rel="self"/>
+  <updated>2014-08-14T18:00:00-06:00</updated>
+  <author>
+    <name>Blog Author</name>
+  </author>
+  <entry>
+    <title>Looking Back on a Year With Scala</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/looking-back-on-a-year-with-scala.html"/>
+    <id>http://blog.url.com/blog/2014/looking-back-on-a-year-with-scala.html</id>
+    <published>2014-08-14T18:00:00-06:00</published>
+    <updated>2014-09-27T08:27:25-06:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;I&amp;#39;ve been using Scala professionally (read: every day) for about a year now.  Here are some thoughts I have about it looking back.&lt;/p&gt;
+
+&lt;h2&gt;Pros&lt;/h2&gt;
+
+&lt;h4&gt;1.) Type signatures as an enforced contract have done wonders for architecture and design&lt;/h4&gt;
+
+&lt;p&gt;I&amp;#39;ve worked in other statically typed languages for years (C# for 5-6 years) but something about the emphasis and syntax around
+function type signatures really pushes them to the forefront.  I suspect this is in part because a function&amp;#39;s return type is written &lt;em&gt;after&lt;/em&gt;
+the arguments (unlike Java, C#, and similar).  Overall this has made a really big difference for me personally and I assume
+for others as well.  Before, I would think about what the function did, now I think in terms of the &amp;quot;contract&amp;quot; a type signature makes.  &lt;/p&gt;
+
+&lt;p&gt;Before, we might have talked about &amp;quot;a function that waits for promises to resolve and then gets rid of the ones that didn&amp;#39;t return a
+result&amp;quot;.  Now I can talk with team members by saying &lt;code&gt;Seq[Future[Option[A]]] =&amp;gt; Future[Seq[A]]&lt;/code&gt; and it&amp;#39;s very clear what&amp;#39;s being talked about.  What I&amp;#39;ve found is that it&amp;#39;s much easier to design systems, because the focus ends up being on designing only the type signatures (aka interfaces/contracts) and once all the type signatures fit implementation is just a matter of writing the function body.&lt;/p&gt;
+
+&lt;h4&gt;2.) Separation of concerns is enforced via the compiler&lt;/h4&gt;
+
+&lt;p&gt;The ability to describe modules and their relationships, then have that enforced at the compiler level is phenomenal.  Since we learned about this feature we&amp;#39;ve used it extensively in all projects.  I feel like the proof is really evident, we can fire up a new Scala project and the overwhelming majority of code in the libraries is immediately usable because there is no coupling to the app it was originally written for and where there is coupling those relationships have been carefully defined.&lt;/p&gt;
+
+&lt;h4&gt;3.)  A wealth of concurrency management libraries&lt;/h4&gt;
+
+&lt;p&gt;Scala Futures, Scalaz Tasks, and Akka Actors — Compared to other languages that are common in industry use it&amp;#39;s almost embarrassing how many options Scala has to choose from to deal with concurrency.  And what&amp;#39;s even better is all 3 of those aren&amp;#39;t just some off beat hobby projects they&amp;#39;re all well supported and known projects with active communities.&lt;/p&gt;
+
+&lt;h4&gt;4.) Static types force branches to be dealt with&lt;/h4&gt;
+
+&lt;p&gt;Scala&amp;#39;s standard library includes a handful of monads that are extremely useful, like &lt;code&gt;Option&lt;/code&gt; (Maybe monad in Haskell and Swift).  These let a function say, &amp;quot;I may or may not return a value&amp;quot;.  Because it&amp;#39;s a type enforced by the compiler, it means that consuming code needs to deal with as well.  It means when you call that function, right away you need to address both branches if you get a value or don&amp;#39;t.  Compare this to null in Java, Javascript, Ruby, etc. which are very often forgotten to be dealt with until it causes a problem.&lt;/p&gt;
+
+&lt;h2&gt;Risks&lt;/h2&gt;
+
+&lt;h4&gt;1.)  Implicits need caution&lt;/h4&gt;
+
+&lt;p&gt;Implicits are such a double edged sword.  On one hand I&amp;#39;ve been able to pull off some neat DSL-like things with them.  On the other hand most of my team rarely works on that code because you have to really understand how they work.  One of the ideas Scala tries to offer is that you can have your senior developers writing implicts and your junior devs consuming them without understanding the &amp;quot;magic&amp;quot; under the covers.  In practice that kind of happens but not really.  Implicits become a leaky abstraction.&lt;/p&gt;
+
+&lt;p&gt;Implicit similiarly parameters look like they solve dependency problems but they just spread more parameters around.  Implicit type conversion works as long as you have a specific type, otherwise you have to manufacture a type just for conversion.  At the same time it&amp;#39;s easy to end up with really weird errors because some implicit conversion is applying where it wasn&amp;#39;t intended.  I&amp;#39;ve also seen at least 1 bug hit production (including not failing any tests) because an implicit conversion subtly changed it.&lt;/p&gt;
+
+&lt;h4&gt;2.)  Fancy type system&lt;/h4&gt;
+
+&lt;p&gt;Scala allows type-level programming.  This for-sure fits into the category of &amp;quot;fancy&amp;quot;.  For example, I can describe a class that extends an existing type, then describe methods that are only for child types of the type I extended.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;PlaceOps&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt; &lt;span class="k"&gt;&amp;lt;:&lt;/span&gt; &lt;span class="kt"&gt;PlaceLike&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;place&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;delays&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="n"&gt;mf&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=:=&lt;/span&gt; &lt;span class="nc"&gt;AirportLike&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;???&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;I don&amp;#39;t feel that really adds much business value.  It lets people who like to geek out on &amp;quot;correctness&amp;quot; to do some crazy things that no one else on the team understands.&lt;/p&gt;
+
+&lt;h2&gt;Cons&lt;/h2&gt;
+
+&lt;h4&gt;1.)  Near impossible to do TDD&lt;/h4&gt;
+
+&lt;p&gt;Your tests won&amp;#39;t even compile until you&amp;#39;ve scaffolded out everything.  That kind of defeats the purpose of really being &amp;quot;test driven&amp;quot;.  Also because of how mocking and such works, it&amp;#39;s much more difficult to do.  You could to TDD in Scala and some people do try but it doesn&amp;#39;t work anything like how Ruby or Javascript do.&lt;/p&gt;
+
+&lt;h4&gt;2.)  Legacy module system&lt;/h4&gt;
+
+&lt;p&gt;SBT uses Ivy2 which uses Maven.  Why use one package manager when you can use three?  Want to setup a server for your modules?  Cool, better learn how to configure maven because you&amp;#39;ll need to configure that from SBT and make sure ivy2 doesn&amp;#39;t muck it up on the way!  Surprise, Maven uses different domain concepts than SBT, have fun reading their documentation too.  Hey, I&amp;#39;ve got an even better idea:  We should take all our javascript files and roll them up as Maven modules too!&lt;/p&gt;
+
+&lt;p&gt;This is where more recent platforms are killing it.  NPM for node is far and away one of the better package managers out there.&lt;/p&gt;
+
+&lt;h4&gt;3.)  Complex build system&lt;/h4&gt;
+
+&lt;p&gt;They thought it was a good idea to literally invent a new language based on symbols to configure a build.  Sometimes you
+use &lt;code&gt;&amp;lt;&amp;lt;&amp;lt;=&lt;/code&gt; and sometimes you use &lt;code&gt;&amp;lt;&amp;lt;=&lt;/code&gt; and other times &lt;code&gt;++=&lt;/code&gt; and other times &lt;code&gt;:=&lt;/code&gt; and so on.  I&amp;#39;ve gotten used to it and I&amp;#39;ve
+put together my fair share of &amp;quot;clever&amp;quot; build scripts, but it&amp;#39;s always interesting to see the bewilderment of engineers new to
+a project when they first encouter an SBT build script.&lt;/p&gt;
+
+&lt;h4&gt;4.)  Slow&lt;/h4&gt;
+
+&lt;p&gt;Scala compilation is painfully slow.  Painfully slow.  For a largish project test execution time (excluding browser integration tests) is around the 8-10 minute mark depending on what needs to be compiled.  Average is around 4-5 minutes.  Oh you wanted to run tests?  Hang on, your IDE has a lock on your ivy2 file.  Similar sized projects in Ruby/Rails, for example, have test execution times around 1:45 including Capybara integration tests.&lt;/p&gt;
+
+&lt;h4&gt;5.)  Boilerplate&lt;/h4&gt;
+
+&lt;p&gt;There are several places I&amp;#39;m starting to notice now that we waste a lot of time doing boilerplate that is borderline configuration.  The scala meta project has the chance of really cleaning those things up, but right now it&amp;#39;s just a promise and is probably a solid year or two away.&lt;/p&gt;
+
+&lt;h4&gt;6.)  Community&lt;/h4&gt;
+
+&lt;p&gt;&lt;a href="https://twitter.com/PLT_Hulk/status/508990357540192256"&gt;PLT Hulk&lt;/a&gt; has already summed this up well:&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;SCALA AM ALREADY FRAGMENTED AN LONG TIME: 1 THEM WRITING HASKELL FANFIC 2 THEM WRITING HASKELL FANFIC FANFIC 3 JAVA-SCENTED SCALA!&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;There is also the now forked compilers:  &lt;a href="http://typelevel.org/blog/2014/09/02/typelevel-scala.html"&gt;Typelevel&lt;/a&gt;&lt;/p&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Challenges with Implicits for Declarative Programming</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/challenges-with-implicits-for-declarative.html"/>
+    <id>http://blog.url.com/blog/2014/challenges-with-implicits-for-declarative.html</id>
+    <published>2014-07-31T18:00:00-06:00</published>
+    <updated>2014-09-27T08:54:43-06:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;I really want to like Scala implicits but I just keep bumping into limitations with them.  The one
+which has become the most annoying is that implicits only look up what the current &amp;quot;view&amp;quot; of the
+type is, not the &amp;quot;most specific&amp;quot; of what the type is.  Here&amp;#39;s a quick example...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;trait&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Manager&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Engineer&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;
+
+&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;JsonOps&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;any&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;toJson&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="n"&gt;convert&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;JsonConverter&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;])&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;convert&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;any&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;What&amp;#39;s happening here is we have a base type, &lt;code&gt;Person&lt;/code&gt;, and two child types, &lt;code&gt;Manager&lt;/code&gt; and &lt;code&gt;Engineer&lt;/code&gt;.  There
+is an implicit class that is providing a &lt;code&gt;toJson&lt;/code&gt; method to everything where &lt;code&gt;toJson&lt;/code&gt; will look up an
+implicit &lt;code&gt;JsonConverter&lt;/code&gt; of type &lt;code&gt;A&lt;/code&gt; for whatever type it&amp;#39;s called on.  This is a fairly straight forward way of saying,
+&amp;quot;everything should have a toJson method&amp;quot;.&lt;/p&gt;
+
+&lt;p&gt;It works because the compiler will assert for us that there is always
+an implicit &lt;code&gt;JsonConverter&lt;/code&gt; of whatever &lt;code&gt;A&lt;/code&gt; we have in scope during compilation.  For example, If I have
+&lt;code&gt;val engy = new Engineer&lt;/code&gt; and call &lt;code&gt;engy.toJson&lt;/code&gt;, then Scala will look for &lt;code&gt;JsonConverter[Engineer]&lt;/code&gt; and all
+is good.&lt;/p&gt;
+
+&lt;p&gt;In theory this should allow us to write code declaratively, describing once how Engineer JSON is created and leaving
+it at that.  However, what if I have a list of &lt;code&gt;Person&lt;/code&gt;&amp;#39;s?&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;people&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nc"&gt;Engineer&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nc"&gt;Manager&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;people&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;map&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;_&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;toJson&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;What happens is that &lt;code&gt;people&lt;/code&gt; actually is of type &lt;code&gt;Seq[Person]&lt;/code&gt; (Seq is covariant).  At that point the type system
+&amp;quot;sees&amp;quot; the new Engineer and new Manager as type &lt;code&gt;Person&lt;/code&gt; not as types &lt;code&gt;Engineer&lt;/code&gt; and &lt;code&gt;Manager&lt;/code&gt;.  That means that
+when &lt;code&gt;toJson&lt;/code&gt; is called from within the &lt;code&gt;map&lt;/code&gt; when it his the &lt;code&gt;new Engineer&lt;/code&gt;, Scala will look for an implicit
+&lt;code&gt;JsonConverter[Person]&lt;/code&gt; which is not what we want.&lt;/p&gt;
+
+&lt;p&gt;The only work around I&amp;#39;ve come up with for this is to use some kind of dynamic dispatch...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;people&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nc"&gt;Engineer&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nc"&gt;Manager&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;people&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;map&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Engineer&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;e&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;toJson&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Manager&lt;/span&gt;  &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;m&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;toJson&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;This ultimately defeats the entire goal of declarative programming because now I&amp;#39;m back to describing flow.&lt;/p&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Implicit Either Shortcut</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/implicit-either-shortcut.html"/>
+    <id>http://blog.url.com/blog/2014/implicit-either-shortcut.html</id>
+    <published>2014-07-27T18:00:00-06:00</published>
+    <updated>2014-09-21T07:47:32-06:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;I have some team members that get weirded out when using &lt;code&gt;Either&lt;/code&gt;, specifically around the fact
+that you have to wrap everything in ether &lt;code&gt;Left&lt;/code&gt; or &lt;code&gt;Right&lt;/code&gt;.  It hit me, it&amp;#39;s always obvious in
+retrospect, that it&amp;#39;s possible to just write an implicit conversion for this and abstract it away
+(for better or for worse)...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;aToEither&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;,&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Either&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;, &lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Left&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;bToEither&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;,&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Either&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;, &lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Right&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;input&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Either&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;String&lt;/span&gt;, &lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;])&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;input&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="nc"&gt;Left&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"Hello, $s"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="nc"&gt;Right&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;i&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"You are $i years old"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="nc"&gt;You&lt;/span&gt; &lt;span class="n"&gt;are&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt; &lt;span class="n"&gt;years&lt;/span&gt; &lt;span class="n"&gt;old&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+</content>
+  </entry>
+  <entry>
+    <title>A Crash Course in Scala Pattern Matching</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/a-crash-course-in-scala-pattern-matching.html"/>
+    <id>http://blog.url.com/blog/2014/a-crash-course-in-scala-pattern-matching.html</id>
+    <published>2014-07-08T18:00:00-06:00</published>
+    <updated>2014-09-21T15:54:23-06:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;h2&gt;Theory&lt;/h2&gt;
+
+&lt;p&gt;Initial implementations of pattern matching find their roots in calculus&amp;#39; piecewise functions:  &lt;a href="http://en.wikipedia.org/wiki/Piecewise"&gt;http://en.wikipedia.org/wiki/Piecewise&lt;/a&gt;.
+Other languages like erlang, elixir, and haskell have an implementation closer to the calculus form, but in Scala pattern matching has been implemented in a couple places, most notably in what other language&amp;#39;s &lt;code&gt;switch&lt;/code&gt; statement is.&lt;/p&gt;
+
+&lt;h2&gt;Why&lt;/h2&gt;
+
+&lt;p&gt;If/then&amp;#39;s have been a long favorite of control flow so why did we need a different control structure?  The problem is that they
+require every situation to be distilled down to a boolean.  As programmers we like and use booleans so much because we&amp;#39;re used to them, but
+if I asked any non-programmer if they would be okay describing every situation they might encounter in their life as &amp;quot;true&amp;quot; or
+&amp;quot;false&amp;quot; they would find the notion ridiculous.&lt;/p&gt;
+
+&lt;p&gt;What programming languages really need, and what pattern matching provides, is the ability to describe the pattern of a situation
+instead of if something is &lt;code&gt;true&lt;/code&gt; or &lt;code&gt;false&lt;/code&gt;.  This has the added benefit of not requiring anyone reading the code to translate
+things into &lt;code&gt;true&lt;/code&gt; or &lt;code&gt;false&lt;/code&gt; in their head in order to understand it.&lt;/p&gt;
+
+&lt;h2&gt;Patterns&lt;/h2&gt;
+
+&lt;p&gt;Changing one&amp;#39;s thinking from if/then/boolean to patterns takes some time.  The reward is less code that expresses things at a
+higher level.  Scala has about 6 or 7 built-in patterns and programmers can make their own as well.  Let&amp;#39;s do an example to
+visualize how patterns might be used.  What if we wanted to write some code to branch based on the first letter of a &lt;code&gt;String&lt;/code&gt;.  If
+it&amp;#39;s &amp;quot;A&amp;quot; do this, if it&amp;#39;s &amp;quot;B&amp;quot; do this, and so on.  We might start by thinking that we could slice off the first letter then
+&lt;code&gt;match&lt;/code&gt; on that latter (in much the same way we&amp;#39;d use if/then)...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="n"&gt;phrase&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;firstLetter&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="s"&gt;"A"&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;...&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="s"&gt;"B"&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The syntax for a Scala pattern is to…&lt;/p&gt;
+&lt;div class="highlight plaintext"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;VALUE match {
+  case PATTERN1 =&amp;gt; run this code if PATTERN1 is true
+  case PATTERN2 =&amp;gt; run this code if PATTERN2 is true
+}
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;A pattern can be more than just a single value.  For example, if we had a tuple &lt;code&gt;(String, String)&lt;/code&gt;, we could match that as well...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"Bob"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"Smith"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"Carley"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="k"&gt;_&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;       &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;"Call me"&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"Bob"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"Williams"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;"Hello Bob"&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;_&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"Johnson"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;      &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;"Your surname is Johnson"&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The underscore &lt;code&gt;_&lt;/code&gt; means &amp;quot;anything&amp;quot;.  Notice how we can describe a pattern referencing either or both of the values in the tuple.&lt;/p&gt;
+
+&lt;h2&gt;Deconstruction&lt;/h2&gt;
+
+&lt;p&gt;One of the features of Scala&amp;#39;s pattern matching is that it also does deconstruction, sometimes call &amp;quot;destructuring&amp;quot;.  In the example above,
+what if we wanted to get the first name when the surname was &amp;quot;Johnson&amp;quot;.  While we wrote &lt;code&gt;(_, &amp;quot;Johnson&amp;quot;)&lt;/code&gt;, we could have captured the &lt;code&gt;_&lt;/code&gt; into a value.  Languages
+like erlang and elixir actually use this to indicate if a function succeeded for not.  Let&amp;#39;s re-implement that in Scala.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;doComputation&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Tuple2&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Symbol&lt;/span&gt;,&lt;span class="kt"&gt;Long&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;???&lt;/span&gt;
+
+&lt;span class="n"&gt;doComputation&lt;/span&gt;&lt;span class="o"&gt;()&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;'Ok,&lt;/span&gt; &lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;   &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"The computed value was "&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="ss"&gt;'Error,&lt;/span&gt; &lt;span class="n"&gt;code&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"An error happened, error code: "&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;code&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The &lt;code&gt;doComputation&lt;/code&gt; function returns a tuple, where the first value is a symbol (represented in scala by prefixing the name with a single apostrophe).
+This symbole contains if the call succeeded for failed.  The second value of the tuple is actually the return value.  We could capture this into a
+value (variable) then do something with it.  Using the a value is the same as underscore except the value is preserved for us to use to the right of the pattern.&lt;/p&gt;
+
+&lt;p&gt;This type of deconstruction works with case classes as well...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;gender&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;And given a person we want to do one thing if the person&amp;#39;s gender is male and something else if it&amp;#39;s female…&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;person&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"Bob"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"male"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;person&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"male"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;print&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"$name, please use the Men's bathroom"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"female"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;print&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"$name, please use the Women's bathroom"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Classes (case classes specifically) in Scala are also patterns**.  The magic here is that I&amp;#39;m matching the against &lt;code&gt;gender&lt;/code&gt; using an actual value but &lt;code&gt;name&lt;/code&gt; is a variable that is being filled with the person&amp;#39;s name!  This is actually really amazing because in one line of code I&amp;#39;m expressing a pattern and getting back variables as a result, which I can then use in the code on the right after the &lt;code&gt;=&amp;gt;&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;** = What is ultimately making all of these things &amp;quot;a pattern&amp;quot; is the presesence of an &lt;code&gt;unapply&lt;/code&gt; method.&lt;/p&gt;
+
+&lt;p&gt;It&amp;#39;s possible to use pattern matching outside of the &lt;code&gt;match&lt;/code&gt; statement too actually...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;person&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"Titus"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"male"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;gender&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;person&lt;/span&gt;
+&lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"Hello $name"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;h2&gt;Guards&lt;/h2&gt;
+
+&lt;p&gt;So what happens if we want to have a pattern of a range?  Say our Person class had age instead of gender, we could do something like…&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+
+&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;person&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"Titus"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;31&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;person&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;15&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;print&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"$name, you cannot drive."&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="mi"&gt;15&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;print&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="s"&gt;"$name, you can drive."&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The &lt;code&gt;if age &amp;lt; 15&lt;/code&gt; bit after the pattern is called a &amp;quot;guard&amp;quot;.  It allows an additional (albiet boolean) assertion to be applied in order for the pattern to be considered matched.&lt;/p&gt;
+
+&lt;h2&gt;Cons (the good kind)&lt;/h2&gt;
+
+&lt;p&gt;There are some neat built-in patterns that are worth knowing about, in particular &lt;code&gt;::&lt;/code&gt; is.  In Scala &lt;code&gt;::&lt;/code&gt; is both a function and a pattern named &amp;quot;cons&amp;quot;.  Sequences (arrays, lists, etc.) are based on a computer science concept called &lt;a href="http://en.wikipedia.org/wiki/Linked_list"&gt;&amp;quot;linked lists&amp;quot;&lt;/a&gt;.  The wikipedia page has a nice graphic which you might want to check out, but basically a linked list is a strategy for storing things in memory where each node has a value and a pointer to the next value.  We could express this with a class…&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;next&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Note that the second property of Node is &amp;quot;next&amp;quot; which is a reference to another Node.  If we wanted to make a list we could just keep combining Nodes…&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;myList&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"a"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"b"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"c"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Nil&lt;/span&gt;&lt;span class="o"&gt;)))&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;That&amp;#39;s verbose and hard to read, so we could make an operator that given any String would return a new Node, adding the Node to the right of it to a list.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;next&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="o"&gt;::(&lt;/span&gt;&lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;value&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;At that point we could construct lists using that function to build a lists.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="c1"&gt;// These all produce the same thing:
+&lt;/span&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;myList&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"a"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"b"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Node&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"c"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Nil&lt;/span&gt;&lt;span class="o"&gt;)))&lt;/span&gt;
+&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;myOtherList&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="s"&gt;"a"&lt;/span&gt; &lt;span class="o"&gt;::&lt;/span&gt; &lt;span class="s"&gt;"b"&lt;/span&gt; &lt;span class="o"&gt;::&lt;/span&gt; &lt;span class="s"&gt;"c"&lt;/span&gt; &lt;span class="o"&gt;::&lt;/span&gt; &lt;span class="nc"&gt;Nil&lt;/span&gt;
+&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;myThirdList&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"a"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"b"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="s"&gt;"c"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;So that&amp;#39;s cons the function.&lt;/p&gt;
+
+&lt;p&gt;What Scala did is that it also made Cons a pattern.  Cons works where an element is on the left and the list is on the right.  The Scala pattern works the same way but also utilizing deconstruction.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;list&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;list&lt;/span&gt; &lt;span class="k"&gt;match&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="n"&gt;head&lt;/span&gt; &lt;span class="o"&gt;::&lt;/span&gt; &lt;span class="n"&gt;tail&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;This is the pattern you see in Steve&amp;#39;s example.  In this case &lt;code&gt;head&lt;/code&gt; would be 1 and &lt;code&gt;tail&lt;/code&gt; would be Seq(2, 3) because of how cons works.  At this point you should notice the use of head/tail which align with the recursive solution patterns I sent you.&lt;/p&gt;
+
+&lt;h2&gt;An Improvement&lt;/h2&gt;
+
+&lt;p&gt;Going back to our inital example of having a pattern that matches on the first letter of a &lt;code&gt;String&lt;/code&gt;, because people are so used to booleans it would be easy to use the cons pattern with a guard...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="n"&gt;first&lt;/span&gt; &lt;span class="o"&gt;::&lt;/span&gt; &lt;span class="n"&gt;remainder&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;first&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="s"&gt;"A"&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;The real benefit of patterns is that it affords us the opportunity to completely bypass booleans (ie. if/thens) and simply express the case we&amp;#39;re interested in.  We could instead convert our &lt;code&gt;String&lt;/code&gt; to a char array and use cons to match the character we&amp;#39;re intersted in...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="sc"&gt;'A'&lt;/span&gt; &lt;span class="o"&gt;::&lt;/span&gt; &lt;span class="n"&gt;rest&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;This pattern reads &amp;quot;the case where the first letter of a string is &amp;#39;A&amp;#39; and the remainder is anything, assigned to the variable &lt;code&gt;rest&lt;/code&gt;&amp;quot; which is exactly what we want.&lt;/p&gt;
+
+&lt;p&gt;Patterns take some time to learn and get comfortable with but they offer the advantage of being much easier to read.  Once you understand cons you can look at the pattern and instantly know the case we care about rather than having to mentally translate things to a boolean (or worse, mentally make them NOT because a &lt;code&gt;!&lt;/code&gt; Is hanging around).&lt;/p&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Empty, as a Contract</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/empty-as-a-contract.html"/>
+    <id>http://blog.url.com/blog/2014/empty-as-a-contract.html</id>
+    <published>2014-06-26T18:00:00-06:00</published>
+    <updated>2014-09-21T07:53:34-06:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;If you have a Scala project and you do any amount of testing in it, it&amp;#39;s more than likely
+you&amp;#39;ve got some big collection of &amp;quot;factories&amp;quot; that just instantiate models with test values.&lt;/p&gt;
+
+&lt;p&gt;Perhaps something like...&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="c1"&gt;// person.scala
+&lt;/span&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Option&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;])&lt;/span&gt;
+
+&lt;span class="c1"&gt;// test/factories.scala
+&lt;/span&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;buildPerson&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s"&gt;"Bob"&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Option&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Some&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;30&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt;
+  &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;This approach works, but it creates a constant maintenance overhead to keep up all of these factories
+whenever the type signature of a model changes.  While not a perfect solution, I noticed that &lt;code&gt;Seq&lt;/code&gt; has
+a function &lt;code&gt;empty&lt;/code&gt; on it&amp;#39;s companion class.  We could think of &lt;code&gt;empty&lt;/code&gt; as a kind of contract with a model.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;trait&lt;/span&gt; &lt;span class="nc"&gt;Emptyable&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;empty&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Example implementation:&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;age&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Option&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;])&lt;/span&gt;
+
+&lt;span class="k"&gt;object&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Emptyable&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;empty&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;""&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;None&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Obviously this is less than pure.  &lt;code&gt;&amp;quot;&amp;quot;&lt;/code&gt; for &lt;code&gt;name&lt;/code&gt; isn&amp;#39;t exactly robust.  However
+with the &lt;code&gt;empty&lt;/code&gt; method in place, it means that we can now write our tests using that function,
+being guaranteed that we&amp;#39;ll always get back whatever that model considers &amp;quot;empty&amp;quot;.  Using the &lt;code&gt;copy&lt;/code&gt;
+method case class provides, any values that need to be initialized go in there.  Where this
+approach shines is that whenever a model changes (ie. a field gets added), it won&amp;#39;t break every
+test in the world.&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;testPerson&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Person&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;empty&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;copy&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;name&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="s"&gt;"The Field I Care About"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Avoid 'val's on Implicit Classes</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/dont-use-vals-on-implicit-class.html"/>
+    <id>http://blog.url.com/blog/2014/dont-use-vals-on-implicit-class.html</id>
+    <published>2014-06-05T18:00:00-06:00</published>
+    <updated>2014-09-26T23:15:46-06:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;Implicit classes (known early on in the community as the &amp;quot;pimp my library&amp;quot; pattern) are used to extend classes
+with additional methods or values within a given context.  As a rule, having a &lt;code&gt;val&lt;/code&gt; on an implicit class is less
+than spectactular.  Scala expands each use of the implicit at the time it is applied.  This means that for each time
+an implicit method is accessed, a &lt;code&gt;new&lt;/code&gt; instance of the implicit class is created.  Since &lt;code&gt;val&lt;/code&gt;&amp;#39;s are evaluated at class
+creation time, this basically means the compute every single time an implicit class is created.&lt;/p&gt;
+
+&lt;p&gt;Similarly, &lt;code&gt;lazy val&lt;/code&gt; doesn&amp;#39;t offer any additional value because a new instance of the class is being created, which means
+the memoizing effect of lazy val will never be utilized.&lt;/p&gt;
+
+&lt;p&gt;The best choice for an implicit class is probably &lt;code&gt;def&lt;/code&gt;.  If values will be used multiple times, it&amp;#39;s probably better to just
+explicitly instantiate the class yourself and keep that copy around.&lt;/p&gt;
+
+&lt;p&gt;This can be demonstrated easily in the Scala console:&lt;/p&gt;
+&lt;div class="highlight scala"&gt;&lt;table style="border-spacing: 0"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="gutter gl" style="text-align: right"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18&lt;/pre&gt;&lt;/td&gt;&lt;td class="code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;StringOps&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;s&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+
+  &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;one&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"one"&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt; &lt;span class="s"&gt;"one"&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;two&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"two"&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt; &lt;span class="s"&gt;"two"&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="k"&gt;lazy&lt;/span&gt; &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;three&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"three"&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt; &lt;span class="s"&gt;"value"&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+
+&lt;span class="o"&gt;}&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;"asdf"&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;three&lt;/span&gt;
+&lt;span class="n"&gt;one&lt;/span&gt;
+&lt;span class="n"&gt;two&lt;/span&gt;
+&lt;span class="n"&gt;three&lt;/span&gt;
+&lt;span class="n"&gt;res1&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;value&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="s"&gt;"asdf"&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;two&lt;/span&gt;
+&lt;span class="n"&gt;one&lt;/span&gt;
+&lt;span class="n"&gt;two&lt;/span&gt;
+&lt;span class="n"&gt;res2&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;String&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;two&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;
+&lt;/div&gt;
+
+&lt;p&gt;Notice how the &lt;code&gt;.one&lt;/code&gt; method is never called but computes every single time?&lt;/p&gt;
+</content>
+  </entry>
+</feed>

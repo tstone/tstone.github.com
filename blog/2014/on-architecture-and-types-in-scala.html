@@ -1,0 +1,181 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ On Architecture (and Types) in Scala ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2014 blog_2014_on-architecture-and-types-in-scala">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">On Architecture (and Types) in Scala</h1>
+
+      <p>In considering a whole bucket of early mistakes that were made with Scala, here are some reflections about things.  These comments
+are considered from the perspective of a web application, but probably have a broader application as well.</p>
+
+<h2>1. Models should strive to represent data as the domain is concerned and to the detail the domain is specific</h2>
+
+<p><strong>This means:</strong></p>
+
+<ul>
+<li>Representing data types with specific and strong types</li>
+<li>Only using <code>Option</code> when it&#39;s a valid business case</li>
+</ul>
+
+<p><strong>What not to do:</strong></p>
+
+<ul>
+<li>Model data exactly as APIs are returning it</li>
+</ul>
+
+<p>This is poor:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6</pre></td><td class="code"><pre><span class="k">case</span> <span class="k">class</span> <span class="nc">Something</span> <span class="o">(</span>
+  <span class="n">every</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span>
+  <span class="n">thing</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span>
+  <span class="n">is</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">],</span>
+  <span class="n">optional</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+<span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>This is also poor:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="k">case</span> <span class="k">class</span> <span class="nc">Place</span> <span class="o">{</span>
+  <span class="n">postalCode</span><span class="k">:</span> <span class="kt">String</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<h4>Why</h4>
+
+<p>By modeling domain data using generic (primitive) types like <code>String</code>, it shifts the burden of handling that data from the code which is initializing the model to the code that is consuming the model.  The notion of &quot;postal code&quot; as <code>String</code> means that we are creating a contract with the system such that we could take any postal code and substitute it for any <code>String</code> anywhere, and vice versa, any <code>String</code> could be substituted for any postal code.  This is clearly wrong.  Every time this happens a developer needs to deal with validation, asking themselves, &quot;what if this <code>String</code> is really &#39;asdf&#39; and not a postal code?&quot;  Every time this happens what&#39;s really happening is the type system is being re-implemented in a poor way.</p>
+
+<p>Scala makes this an easily sovled problem.  A simple starting example (this could be expanded to include international postal codes if that was within the application&#39;s domain):</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15</pre></td><td class="code"><pre><span class="k">case</span> <span class="k">class</span> <span class="nc">PostalAddress</span><span class="o">(</span><span class="n">code</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">plusFour</span><span class="k">:</span> <span class="kt">Option</span><span class="o">[</span><span class="kt">String</span><span class="o">])</span> <span class="o">{</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">isNumeric</span><span class="o">(</span><span class="n">code</span><span class="o">))</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">isGreaterThan</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">code</span><span class="o">.</span><span class="n">toInt</span><span class="o">))</span>
+  <span class="n">require</span><span class="o">(</span><span class="n">isLessThan</span><span class="o">(</span><span class="mi">100000</span><span class="o">,</span> <span class="n">code</span><span class="o">.</span><span class="n">toInt</span><span class="o">))</span>
+
+  <span class="n">plusFour</span><span class="o">.</span><span class="n">map</span> <span class="o">{</span> <span class="n">pf</span> <span class="k">=&gt;</span>
+    <span class="n">require</span><span class="o">(</span><span class="n">isNumeric</span><span class="o">(</span><span class="n">pf</span><span class="o">))</span>
+    <span class="n">require</span><span class="o">(</span><span class="n">isGreaterThan</span><span class="o">(</span><span class="mi">0</span><span class="o">,</span> <span class="n">pf</span><span class="o">))</span>
+    <span class="n">require</span><span class="o">(</span><span class="n">isLessThan</span><span class="o">(</span><span class="mi">10000</span><span class="o">,</span> <span class="n">pf</span><span class="o">))</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+<span class="k">case</span> <span class="k">class</span> <span class="nc">Place</span> <span class="o">{</span>
+  <span class="n">postalAddress</span><span class="k">:</span> <span class="kt">PostalAddress</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<h4>Same for Functions</h4>
+
+<p>This rule could also equally apply to functions.  Function parameters should reflect what is necessary for computation, not just what the provider of the data happened to have.</p>
+
+<h2>2. Models should be focused around abstract traits (interfaces) than concrete models.  Functions that consume models should not take the model, but a trait that describes the least amount of interface the code needs to do it&#39;s work.</h2>
+
+<h4>Why</h4>
+
+<p>This follows the same rational as why scoping, private, protected, sealed, are important:  Exposing extra interface creates dependencies on implementation that make refactoring in the future difficult.  Given a method:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="k">def</span> <span class="n">getWeather</span><span class="o">(</span><span class="n">p</span><span class="k">:</span> <span class="kt">Place</span><span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>This method is equivalent to saying: &quot;all 30 properties and sub-properites exposed by the <code>Place</code> model are necessary to get the weather&quot;.  In actuality, the <code>getWeather</code> function may only need to read the #address property of place.</p>
+
+<p>If models were organized into logical slices of model properties this would allow a function to consume only the portion of the interface it needed.  As one team member put it, &quot;it&#39;s duck typing in a static language using pre-described ducks.&quot;</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6</pre></td><td class="code"><pre><span class="k">trait</span> <span class="nc">LocatablePlace</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">address</span><span class="k">:</span> <span class="kt">Address</span>
+  <span class="k">val</span> <span class="n">latLng</span><span class="k">:</span> <span class="kt">LatLng</span>
+<span class="o">}</span>
+
+<span class="k">def</span> <span class="n">getWeather</span><span class="o">(</span><span class="n">p</span><span class="k">:</span> <span class="kt">LocatablePlace</span><span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<h2>3. Web applications should separate web layer code and service layer code</h2>
+
+<ol>
+<li><p>Every piece of code goes in either one or the other.  There isn&#39;t any middle ground.  Bonus:  Make the service layer code a different SBT project.</p></li>
+<li><p>Separate models for the web application and models that services return.  Services shouldn&#39;t know anything about web app models.</p></li>
+<li><p>Services that implement service-specific models (ie. XyzResponse) should have those models be a part of the namespace for that service.  This seems obvious but it&#39;s easy to miss.</p></li>
+<li><p>Folders like &quot;helpers&quot; and &quot;utils&quot; are junk drawers and great places for bad code to hide out.</p></li>
+<li><p>A &quot;presenters&quot; folder is needed (for a Play 2 app).  Controllers act as translation layers between services and views.  There there can be a lot of common logic between turning service responses into data for views and that has to live somewhere.  Sticking to a known (or at least well published) pattern is better than trying to create a new convention.</p></li>
+<li><p>Bring widget/component files together, HTML, js, css all in one folder.  There isn&#39;t any advantage to storing files based on what language they are built in.  If components have all 3 language files together it&#39;s easier to refactor into being their own repo and sharing them across projects.</p></li>
+</ol>
+
+<h2>4. There has to be a better DI pattern</h2>
+
+<p>None of them are good.</p>
+
+<p><strong>Constructor</strong>:  Passing in dependencies as class constructor arguments means traits can&#39;t have dependencies.  That&#39;s too big of a cost in my opinion, to cut out a big language feature just because it doesn&#39;t fit a given DI pattern.  It also can be a real pain to setup for testing.</p>
+
+<p><strong>Guice</strong>:  See above</p>
+
+<p><strong>Cake</strong>:  How does cake get implemented for services that are their own SBT project?  Do they end up having their own or does it force coupling?  It seems like a lot of boilerplate/wiring for what isn&#39;t that complicated of a problem.  On top of that I can see it getting out of hand and creating a lot of spaghetti code as things would be including all kinds of Env traits that are already pseudo-global, which we all know is bad... or something.</p>
+
+<p><strong>Monad</strong>:  Looks really cool but this isn&#39;t a trivial thing to understand conceptually and puts quite a mental tax on getting things done, particularly for junior team members.</p>
+
+<h2>5. Component templates (widget, partial templates) should take primitive/generic types; They should be named for what UI widgets they implement, not what business service they represent.</h2>
+
+<p>In other words, they shouldn&#39;t take models.</p>
+
+<p>Sub-components should be refactored into their own components.</p>
+
+<p>We don&#39;t want to unnecessarily create a dependency between a service implementation and a front-end component.  This would decrease their reusability across several apps.  On the component level this is more critical as components should be shared across apps.</p>
+
+<h2>6.  Views (page templates) should take presenters not models.</h2>
+
+<p>It&#39;s highly probably that page templates will rarely or never be shared across apps.  And it&#39;s also highly probably that they will need to consume more information than a small template tag.  Accepting a presenter is a good compromise: we don&#39;t create a dependency between the template and a service but we get the advantage of not having to pass down 50x parameters just to get something rendered.</p>
+
+<p>The added benefit here is that testing and refactoring should be made easier.  View tests should not break when service implementations are changed.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

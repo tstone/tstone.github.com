@@ -1,0 +1,342 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Thinking of Template Engines ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2012 blog_2012_thinking-of-template-engines">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Thinking of Template Engines</h1>
+
+      <p>I&#39;d be amiss if I didn&#39;t tell you I just spent the better part of today evaluating template engines.  This certainly isn&#39;t the first time I&#39;ve had to evaluate and select a template engine.  It was, however, the first time I&#39;ve had to do it knowing that 8+ developers were going to have to use this bringing in all their experience and background from other languages.</p>
+
+<p>It turns out it&#39;s ridiculously difficult to select a template engine for a web project which 1.) is easy to read and understand, 2.) isn&#39;t too overwhelming for designers, 3.) enforces some kind of consistency, and 4.) everyone can agree on.  That last goal is probably asking for too much, but the first three certainly are something most business would want when selecting a template engine.</p>
+
+<p>Having been in web development now for almost 15 years, the templating &quot;scene&quot;, if you could call it that, has seen some ebbs and flows.  Early web development with Perl/CGI was little more than concatenating HTML as a string in some script.</p>
+<div class="highlight perl"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="s">'&lt;a href="/post/'</span> <span class="o">.</span> <span class="nv">$projectid</span> <span class="o">.</span> <span class="s">'"&gt;Project Id #'</span> <span class="o">.</span> <span class="nv">$projectid</span> <span class="o">.</span> <span class="s">'&lt;/a&gt;'</span> <span class="k">if</span> <span class="nv">$isproject</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>As things evolved, ASP and PHP put forth a mainstream idea to have a separate HTML file which contained some display logic but primarily separated the HTML from the processing script.</p>
+<div class="highlight php"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="err">&lt;</span>% if (isproject) { %&gt;
+    <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"/post/&lt;%= project.id %&gt;"</span><span class="nt">&gt;</span>Project Id #<span class="err">&lt;</span>%= project.id %&gt;<span class="nt">&lt;/a&gt;</span>
+<span class="err">&lt;</span>% } %&gt;
+</pre></td></tr></tbody></table>
+</div>
+
+<p>&quot;Spaghetti code&quot; was a phrase that began to be associated with this PHP/ASP type of templating.  Interestingly enough Rails picked up this style with it&#39;s default choice of ERB.</p>
+
+<p>Soon however came the not-code-but-tags type of templates.  The Django template language, for example, allowed <em>some</em> logic and functionality through pre-defined tags but did not allow code to be directly in the template.  These tags offered most functionality that you&#39;d need for display logic, but prevented the native language (Python, Ruby, VBScript, whatever) from being anywhere in the HTML.  This notion was likely aimed at preventing the spaghetti code of above.</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre>{% if isproject %}
+    &lt;a href="/post/{{ project.id }}"&gt;Project Id #{{ project.id }}&lt;/a&gt;
+{% endif %}
+</pre></td></tr></tbody></table>
+</div>
+
+<p>From there things started going crazy.  A few of the more extreme spin-offs happened, such as the minimalistic, significant white space, tag-less type of template engines like HAML and Jade.  These approach the problem by throwing away HTML completely, and designing a new language to describe the structure of documents which results in HTML output.</p>
+<div class="highlight slim"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2</pre></td><td class="code"><pre><span class="p">-</span> <span class="k">if</span> <span class="n">isproject</span>
+    <span class="nt">a</span><span class="w"> </span><span class="na">href</span><span class="p">=</span><span class="s">"/post/#{project.id}"</span><span class="w"> </span>Project<span class="w"> </span>Id<span class="w"> </span>#<span class="si">#{</span><span class="n">project</span><span class="p">.</span><span class="nf">id</span><span class="si">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>On the opposite end of the spectrum are logic-less templates, which stuck closer to the ideas of the Django/Liquid template language, but took that idea as far as it could go.  In such logic-less templates there are no <code>if</code>&#39;s or <code>then</code>&#39;s, only blocks.  Blocks automatically resovle to if&#39;s or for/each&#39;s on the backend, but such logic isn&#39;t actually typed out into the template.</p>
+<div class="highlight handlebars"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre>{#isproject}
+    <span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"/post/</span><span class="k">{{</span><span class="nv">project</span><span class="p">.</span><span class="nv">id</span><span class="k">}}</span><span class="s">"</span><span class="nt">&gt;</span>Project Id #<span class="k">{{</span><span class="nv">project</span><span class="p">.</span><span class="nv">id</span><span class="k">}}</span><span class="nt">&lt;/a&gt;</span>
+{/isproject}
+</pre></td></tr></tbody></table>
+</div>
+
+<p>I realize this little history lesson isn&#39;t exhaustive, but it at least gives context to what I&#39;m going to say:  I <em>still</em> don&#39;t like any mainstream template languages.</p>
+
+<p>ERB/ASP still suffer from spaghetti code.  HTML/Jade are too extreme, too difficult to read, and can become awkward to work with.  Mustache/Handlebars (logic-less) become too restrictive.  The Django/Liquid style of templates is probably the best pick, but the syntax can be rather verbose.</p>
+
+<h3>What&#39;s Missing?</h3>
+
+<p>LESS, the CSS pre-processor, introduced an idea that seems to have been lost with many web template engines:  all of CSS is valid syntax.  In other words, start with the existing language, then add on top of it.  This approach stands head and shoulders above the rest for real world, team applications because it lowers the learning curve a lot for new folks coming in.  Starting with a language that you can write everything as you know it, then begin to add on tricks as you learn them is a big advantage.</p>
+
+<p>Secondly, it makes templates actually look like, you know, HTML.  This is a benefit for designers who need to set things up initially, but aren&#39;t programmers and don&#39;t want to learn intricacies of a custom language or a logic-less system.</p>
+
+<h3>Sculpting Something New</h3>
+
+<p>One of those intangibles is where a language becomes the syntax of how a programmer thinks it in their head, cutting out the fluff in between.  Here&#39;s an example of that.</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">&lt;a</span> <span class="na">href=</span><span class="s">"/post/1234"</span> <span class="na">class=</span><span class="s">"button"</span><span class="nt">&gt;</span>Project Id #1234<span class="nt">&lt;/a&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The above markup is very common.  The tag-less languages would let you identify this tag simply with:</p>
+<div class="highlight css"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">a</span><span class="nc">.button</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>But that doesn&#39;t &quot;read&quot; like HTML, so what if we brought back the tags?</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">&lt;a</span><span class="err">.</span><span class="na">button</span><span class="nt">&gt;&lt;/a&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Tag-less languages usually end up having a verbose syntax for attributes.  As an example, HAML requires the &quot;hash rocket&quot; syntax and symbols...</p>
+<div class="highlight haml"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">%a</span><span class="p">{</span><span class="ss">:href</span> <span class="o">=&gt;</span> <span class="s2">"/post/1234"</span><span class="p">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>That&#39;s a bit too verbose.  The more substitution-based languages don&#39;t shorten this down at all.  It&#39;s been my observation that <em>many</em> HTML tags have what could be considered a &quot;default attribute&quot;:</p>
+
+<ul>
+<li><code>src</code> for <code>&lt;img&gt;</code></li>
+<li><code>href</code> for <code>&lt;a&gt;</code></li>
+<li><code>type</code> for <code>&lt;input&gt;</code></li>
+<li>and so on...</li>
+</ul>
+
+<p>As a shorthand for these default attributes, it could be written as if <code>tag equals default attribute</code>.</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">&lt;a</span><span class="err">.</span><span class="na">button=</span><span class="s">"/post/1234"</span><span class="nt">&gt;&lt;/a&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Additional attributes could be written in as normal:</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">&lt;a</span><span class="err">.</span><span class="na">button=</span><span class="s">"/post/1234"</span> <span class="na">target=</span><span class="s">"_blank"</span><span class="nt">&gt;&lt;/a&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>I think this works because typically when I&#39;m coding, I think &quot;This anchor equals this destination URL.&quot;  I don&#39;t think, &quot;This anchor&#39;s href attribute equals this URL.&quot;  If this mental shorthand that we&#39;re already doing could be tapped in a language, it could create something that reads and writes as easy as HTML, but is less verbose.</p>
+
+<h3>About Code Blocks</h3>
+
+<p>In the ASP or PHP world, this kind of thing ended up being common:</p>
+<div class="highlight php"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="err">&lt;</span>% if (something) { %&gt;
+    // ...
+<span class="err">&lt;</span>% } %&gt;
+</pre></td></tr></tbody></table>
+</div>
+
+<p>What the heck is this: <code>&lt;% } %&gt;</code>.  I can&#39;t even begin to describe how awkward that is to read, being all symbols and visually rubbish.</p>
+
+<p>On the flip-side, the tag-less template engines use the significant white space (read: indentation) to isolate code blocks</p>
+<div class="highlight haml"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4</pre></td><td class="code"><pre>    <span class="p">-</span> <span class="k">if</span> <span class="n">something</span>
+        <span class="c">// ...
+</span>
+    some other markup here
+</pre></td></tr></tbody></table>
+</div>
+
+<p>This creates the opposite problem: There isn&#39;t anything telling you the block is done or where the markup is out of the block except the white space.  And the white space is rather vague in it&#39;s appearance.</p>
+
+<p>The Liquid/Django engines provide a decent alternative here by simply being verbose.</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre>{% if something %}
+    // ...
+{% endif %}
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Using <code>{</code> and <code>%</code> is just hands-down, one of the worst character combinations to type...  shift+[, shift+5, space.  Ugh.  Secondly, <code>endif</code> is unnecessarily verbose.</p>
+
+<p>This is one place where a corporate language got it &quot;kind of&quot; right: Razor.  Microsoft&#39;s Razor template engine, for MVC3 and above, simply uses @.  And while @ is still shift+2 it is for one reason or another easier to type than %.  What if the whole code block was shortened down to just...</p>
+<div class="highlight objective_c"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="err">@if</span> <span class="n">something</span>
+    <span class="c1">// ...
+</span><span class="k">@end</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Not too bad?  The @&#39;s set it off as being a separate block, but there isn&#39;t a huge amount to type to get there.</p>
+
+<p>Which brings us to the issue of substitution.  To be honest, there isn&#39;t much difference between <code>#{project.id}</code> and <code>{{ project.id }}</code>.  And there&#39;s not likely much room for improvement either.</p>
+
+<p>The best that can be hoped for here is a syntax which makes the substitution stand out.  White space here <em>should be required</em> when the substitution is happening mid-string.  A nicety would be if the same character that was used for a code block was used for substitution. This simply reduces the surface of the language, and only requires developers to remember that <code>@@</code> is needed when they need an actual <code>@</code> symbol in the text.</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">&lt;a</span><span class="err">.</span><span class="na">button=</span><span class="s">"/post/@: project.id :"</span> <span class="na">target=</span><span class="s">"_blank"</span><span class="nt">&gt;</span>Project Id #@: project.id :<span class="nt">&lt;/a&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The idea here is to use white space plus symbols to set off the substitution.  The colon <code>:</code> character was chosen in combination with the <code>@</code> to give it a sense that there is an insertion happening (imagine <code>@:</code> being a portal, and text is flying in through that portal).</p>
+
+<p>However, sometimes it happens than the insertion will go into a sentence of human language.  In this case, the trailing <code>:</code> and required white space become awkward to code instead of improving visibility.  In these cases no white space would be required at the start, but white space or punctuation after the variable would be required.</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nt">&lt;p&gt;</span>Hello, @:name.  Your current balance of @:balance is up 2% over yesterday!<span class="nt">&lt;/p&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>One more thing: single line comments should be allowed.</p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2</pre></td><td class="code"><pre>// Link to the currently selected project
+<span class="nt">&lt;a</span><span class="err">.</span><span class="na">button=</span><span class="s">"/post/@: project.id :"</span> <span class="na">target=</span><span class="s">"_blank"</span><span class="nt">&gt;</span>Project Id #@: project.id :<span class="nt">&lt;/a&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>So would all of this make a better template engine?  I don&#39;t know.  Someone should build it and we&#39;ll find out.</p>
+
+<p>At the moment, the best alternative to the above which I&#39;ve seen is <a href="http://slim-lang.com/">Slim</a>.  In that vein, I&#39;ll re-code the same document that appears on the front of both Slim and Jade here in my fake template language.</p>
+
+<h4>Slim vs. Mine</h4>
+
+<p><a href="http://slim-lang.com/">Template In Slim Code</a></p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40</pre></td><td class="code"><pre><span class="cp">&lt;!DOCTYPE html&gt;</span>
+<span class="nt">&lt;html&gt;</span>
+    <span class="nt">&lt;head&gt;</span>
+        <span class="nt">&lt;title&gt;</span>Examples<span class="nt">&lt;/title&gt;</span>
+        <span class="nt">&lt;meta</span><span class="err">="</span><span class="na">keywords</span><span class="err">"</span> <span class="na">content=</span><span class="s">"template language"</span> <span class="nt">/&gt;</span>
+        <span class="nt">&lt;meta</span><span class="err">="</span><span class="na">author</span><span class="err">"</span> <span class="na">content=</span><span class="s">"template language"</span> <span class="nt">/&gt;</span>
+
+        <span class="nt">&lt;script&gt;</span>
+            <span class="nx">alert</span><span class="p">(</span><span class="s1">'Supports embedded javascript!'</span><span class="p">);</span>
+        <span class="nt">&lt;/script&gt;</span>
+    <span class="nt">&lt;/head&gt;</span>
+
+    <span class="nt">&lt;body&gt;</span>
+        <span class="nt">&lt;h1&gt;</span>Markup examples<span class="nt">&lt;/h1&gt;</span>
+
+        <span class="nt">&lt;div</span><span class="err">#</span><span class="na">content</span><span class="nt">&gt;</span>
+            <span class="nt">&lt;p&gt;</span>This example shows you how a basic template file looks like.<span class="nt">&lt;/p&gt;</span>
+
+            @yield
+
+            @if items
+                <span class="nt">&lt;table&gt;</span>
+                    @for item in items
+                        <span class="nt">&lt;tr&gt;</span>
+                            <span class="nt">&lt;td</span><span class="err">.</span><span class="na">name</span><span class="nt">&gt;</span>@: item.name :<span class="nt">&lt;/td&gt;</span>
+                            <span class="nt">&lt;td</span><span class="err">.</span><span class="na">price</span><span class="nt">&gt;</span>@: item.price :<span class="nt">&lt;/td&gt;</span>
+                        <span class="nt">&lt;/tr&gt;</span>
+                    @end
+                <span class="nt">&lt;/table&gt;</span>
+            @else
+                <span class="nt">&lt;p&gt;</span>No items found.  Please ad some inventory.  Thank you!<span class="nt">&lt;/p&gt;</span>
+            @end
+        <span class="nt">&lt;/div&gt;</span>
+
+        <span class="nt">&lt;div</span><span class="err">#</span><span class="na">footer</span><span class="nt">&gt;</span>
+            @render 'footer'
+            Copyright © @:year @:author
+        <span class="nt">&lt;/div&gt;</span>
+    <span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<h4>Jade vs. Mine</h4>
+
+<p><a href="http://jade-lang.com/">Template In Jade</a></p>
+<div class="highlight html"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23</pre></td><td class="code"><pre><span class="cp">&lt;!DOCTYPE html&gt;</span>
+<span class="nt">&lt;html</span><span class="err">="</span><span class="na">en</span><span class="err">"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;head&gt;</span>
+        <span class="nt">&lt;title&gt;</span>Jade<span class="nt">&lt;/title&gt;</span>
+        <span class="nt">&lt;script</span><span class="err">="</span><span class="na">text</span><span class="err">/</span><span class="na">javascript</span><span class="err">"</span><span class="nt">&gt;</span>
+            <span class="k">if</span> <span class="p">(</span><span class="nx">foo</span><span class="p">)</span> <span class="p">{</span>
+                <span class="nx">bar</span><span class="p">();</span>
+            <span class="p">}</span>
+        <span class="nt">&lt;/script&gt;</span>
+    <span class="nt">&lt;/head&gt;</span>
+
+    <span class="nt">&lt;body&gt;</span>
+        <span class="nt">&lt;h1&gt;</span>Mine - a possible template engine<span class="nt">&lt;/h1&gt;</span>
+
+        <span class="nt">&lt;div</span><span class="err">#</span><span class="na">container</span><span class="nt">&gt;</span>
+            @if youAreUsingMine
+                <span class="nt">&lt;p&gt;</span>You are amazing<span class="nt">&lt;/p&gt;</span>
+            @else
+                <span class="nt">&lt;p&gt;</span>Get on it!<span class="nt">&lt;/p&gt;</span>
+            @end
+        <span class="nt">&lt;/div&gt;</span>
+    <span class="nt">&lt;/body&gt;</span>
+<span class="nt">&lt;/html&gt;</span>
+</pre></td></tr></tbody></table>
+</div>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

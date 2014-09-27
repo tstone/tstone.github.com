@@ -1,0 +1,108 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Working on a Microwave w/ Express.js ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2012 blog_2012_working-on-microwave">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Working on a Microwave w/ Express.js</h1>
+
+      <p>Seems like I&#39;ve been working a <em>lot</em> on node lately; Well, node+<a href="http://http//expressjs.com">express.js</a>.  In the past week or two, primarily for <a href="https://github.com/tstone/MicrowaveJS">MicrowaveJS</a>, but also for <a href="https://github.com/tstone/jake-scaffolder">jake-scaffolder</a> (which is still kind of under development).</p>
+
+<p>MicrowaveJS has seen a lot of improvements this week:</p>
+
+<ul>
+<li>It now includes search &quot;out of the box&quot;</li>
+<li>It&#39;s mobile friendly/responsive CSS</li>
+<li>The syntax highlighting language can now be specified</li>
+<li>Posts can be &quot;scheduled&quot;</li>
+<li>And of course a bunch of bug fixes</li>
+</ul>
+
+<p>Earlier this week I also converted over some of the route handling code to using Express&#39;s route middleware.  In a nutshell, what route middleware allows you to do is to create functions which are run <em>before</em> the route itself.</p>
+
+<p>Here&#39;s a quick example.  The recommended setup for Heroku is that while you can point a &quot;naked domain&quot; at a Heroku app (ie. google.com), you should instead prefer the sub-domain&#39;ed url (ie. <em>www</em>.google.com).  To support this, I wanted each route to check if my preferred host was being used, and to HTTP 301 to the sub-domain&#39;ed host if not.</p>
+
+<p>The code for doing this is simple...</p>
+<div class="highlight javascript"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2</pre></td><td class="code"><pre><span class="k">if</span> <span class="p">(</span><span class="nx">req</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span> <span class="o">!==</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">host</span><span class="p">)</span>
+    <span class="nx">res</span><span class="p">.</span><span class="nx">writeHead</span><span class="p">(</span><span class="mi">301</span><span class="p">,</span> <span class="p">{</span> <span class="s1">'Location'</span><span class="p">:</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">host</span> <span class="o">+</span> <span class="nx">req</span><span class="p">.</span><span class="nx">originalUrl</span> <span class="p">});</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>However, what would be redundant would be to copy/paste this code to every route in the web app.  Instead, this functionality can be encapsulated into a route middleware function.</p>
+
+<p>The form of route middleware is simple:</p>
+<div class="highlight javascript"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4</pre></td><td class="code"><pre><span class="kd">var</span> <span class="nx">mymiddleware</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+    <span class="c1">// Do stuff</span>
+    <span class="nx">next</span><span class="p">();</span>
+<span class="p">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>It&#39;s basically just a javascript function which receives a copy of the request, response, and a magic function called <code>next</code>.  Creating a middleware handler is as simple as doing whatever you need to do, then calling <code>next()</code> which passes control back to Express to either go on to another route middleware or to call the route handler itself.</p>
+
+<p>In this case the actual middleware turned out to be...</p>
+<div class="highlight javascript"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9</pre></td><td class="code"><pre><span class="nx">middleware</span><span class="p">.</span><span class="nx">forcehost</span> <span class="o">=</span> <span class="nx">exports</span><span class="p">.</span><span class="nx">forcehost</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">,</span> <span class="nx">next</span><span class="p">)</span> <span class="p">{</span>
+    <span class="kd">var</span> <span class="nx">settings</span> <span class="o">=</span> <span class="nx">req</span><span class="p">.</span><span class="nx">app</span><span class="p">.</span><span class="nx">settings</span><span class="p">;</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">settings</span><span class="p">.</span><span class="nx">env</span><span class="p">.</span><span class="nx">production</span> <span class="o">&amp;&amp;</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">forcehost</span> <span class="o">&amp;&amp;</span> <span class="nx">req</span><span class="p">.</span><span class="nx">headers</span><span class="p">.</span><span class="nx">host</span> <span class="o">!==</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">domain</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">writeHead</span><span class="p">(</span><span class="mi">301</span><span class="p">,</span> <span class="p">{</span> <span class="s1">'Location'</span><span class="p">:</span> <span class="nx">settings</span><span class="p">.</span><span class="nx">host</span> <span class="o">+</span> <span class="nx">req</span><span class="p">.</span><span class="nx">originalUrl</span> <span class="p">});</span>
+        <span class="nx">res</span><span class="p">.</span><span class="nx">end</span><span class="p">();</span>
+    <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+        <span class="nx">next</span><span class="p">();</span>
+    <span class="p">}</span>
+<span class="p">};</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>(Note: support was added to not redirect when testing locally based on NODE_ENV.)</p>
+
+<p>Applying a route middleware to a route is just as simple.  Typically a route in Express is setup using a syntax such as...</p>
+<div class="highlight javascript"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'/the/url'</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">){</span> <span class="p">...</span> <span class="p">});</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>To install the middleware, simply add it after the URL string but before the actual handler...</p>
+<div class="highlight javascript"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nx">app</span><span class="p">.</span><span class="nx">get</span><span class="p">(</span><span class="s1">'/the/url'</span><span class="p">,</span> <span class="nx">middleware</span><span class="p">.</span><span class="nx">forcehost</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">req</span><span class="p">,</span> <span class="nx">res</span><span class="p">){</span> <span class="p">...</span> <span class="p">});</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>And that&#39;s it.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

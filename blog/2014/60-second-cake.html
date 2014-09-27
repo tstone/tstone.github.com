@@ -1,0 +1,128 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ 60 Second Cake ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2014 blog_2014_60-second-cake">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">60 Second Cake</h1>
+
+      <p>An quick example of all the pieces of the &quot;Cake&quot; dependency pattern, from the perspective of a web application...</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45</pre></td><td class="code"><pre><span class="c1">// Dependencies are described on an abstract trait (interface)
+</span><span class="k">trait</span> <span class="nc">Dependencies</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">service</span><span class="k">:</span> <span class="kt">Service</span>
+<span class="o">}</span>
+
+<span class="c1">// Controllers require an implementation of dependencies by using a self type declaration
+// (this: TYPE =&gt;) This tells the Scala compiler to require an implementation in order for
+// the class to be initialized.
+</span><span class="k">abstract</span> <span class="k">class</span> <span class="nc">Controller</span> <span class="k">extends</span> <span class="nc">Behavior</span> <span class="o">{</span> <span class="k">this:</span> <span class="kt">Dependencies</span> <span class="o">=&gt;</span>
+  <span class="o">...</span>
+<span class="o">}</span>
+
+<span class="c1">// Because trait Dependencies is abstract, we can build multiple "environments" or implementations
+// The obvious one is the real services
+</span><span class="k">trait</span> <span class="nc">ActualImplementation</span> <span class="k">extends</span> <span class="nc">Dependencies</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">service</span><span class="k">:</span> <span class="kt">Service</span> <span class="o">=</span> <span class="k">new</span> <span class="nc">Service</span><span class="o">(</span><span class="s">"foo"</span><span class="o">,</span> <span class="s">"bar"</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="c1">// But it's also possible to make mock versions or anything else for that matter
+</span><span class="k">trait</span> <span class="nc">MockImplementation</span> <span class="k">extends</span> <span class="nc">Dependencies</span> <span class="k">with</span> <span class="nc">Mockito</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">service</span><span class="k">:</span> <span class="kt">Service</span> <span class="o">=</span> <span class="n">mock</span><span class="o">[</span><span class="kt">Service</span><span class="o">]</span>
+<span class="o">}</span>
+
+<span class="c1">// The actual controller object Play (or whatever framework) uses mixes in actual implementation
+// This is how we get the "real" thing when the app is running
+</span><span class="k">object</span> <span class="nc">Controller</span> <span class="k">extends</span> <span class="nc">Controller</span> <span class="k">with</span> <span class="nc">ActualImplementation</span>
+
+<span class="c1">// It's common to abstract a controller behavior to it's own trait.  When we do this it's not
+// necessary to use the self type declaration.  We can just list the services we need at the
+// top and as long as they are the same name it will "just work"
+</span><span class="k">trait</span> <span class="nc">Behavior</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">service</span><span class="k">:</span> <span class="kt">Service</span>
+  <span class="k">def</span> <span class="n">doSomething</span> <span class="k">=</span> <span class="n">service</span><span class="o">.</span><span class="n">something</span><span class="o">()</span>
+<span class="o">}</span>
+
+<span class="c1">// When testing the behavior trait is mixed in with the mock implementation
+// This is a win-win as everything is already mocked and the only thing left to do
+// is to put any specific stubs you need for the parts you're testing.
+</span><span class="k">class</span> <span class="nc">BehaviorTest</span> <span class="k">extends</span> <span class="nc">Spec</span> <span class="o">{</span>
+  <span class="k">class</span> <span class="nc">TestContext</span> <span class="k">extends</span> <span class="nc">MockImplementation</span> <span class="k">with</span> <span class="nc">Behavior</span>
+
+  <span class="s">"foo"</span> <span class="n">in</span> <span class="k">new</span> <span class="nc">TestContext</span><span class="o">()</span> <span class="o">{</span>
+    <span class="o">...</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

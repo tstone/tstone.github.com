@@ -1,0 +1,65 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ WMD Editor & jQuery ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2009 blog_2009_wmd-editor-jquery">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">WMD Editor & jQuery</h1>
+
+      <p>I’ve been using Dana Robinson’s WMD Editor fork for a couple of months now. It was a great place to start. The problem is, it’s becoming a real pain to customize. Small things were taking huge amounts of time to accomplish so I had a tough decision to make: Continue to use WMD Editor and have to spend hours for customization that should only take a minute or two -OR- re-write the UI myself on top of the existing Markdown rendering component?</p>
+
+<p>Introducing: <a href="http://bitbucket.org/tstone/jquery-markedit">MarkEdit</a> — the Javascript MarkDown editor built on jQuery (to replace WMD Editor). It’s currently being hosted on <a href="http://bitbucket.org/tstone/jquery-markedit/src/">BitBucket</a>.</p>
+
+<ul>
+<li>Built On jQuery/UI — Lighter weight code and less cross-browser issues</li>
+<li>Themeroller Support — Use existing or custom jQuery UI Themeroller themes</li>
+<li>International — Supports the loading of an alternate language</li>
+<li>Sensible Defaults — You should be able to get up and running with 1 line of javascript</li>
+<li>Configurable — Almost all defaults can be overridden very easily upon initialization</li>
+<li>Public API — Interact with whatever part you’re interested in</li>
+<li>Documented</li>
+</ul>
+
+<p>Since everybody loves screenshots, here’s the editor running under a jQuery theme and using the Chinese language translation.</p>
+
+<p><img src="/public/wmd1.png" /></p>
+
+<p>And again here’s a translated popup asking for the URL to insert an image…</p>
+
+<p><img src="/public/wmd2.png" /></p>
+
+<p>And here’s preview mode using a different theme but still in Chinese…</p>
+
+<p><img src="/public/wmd3.png" /></p>
+
+<p>So far I’ve invested about 15 hours into the project with it being probably around 95% complete for initial coding. There is still a TON of testing to be done. I haven’t even tried to fire it up in any of the fussy browsers yet.</p>
+
+<p>I actually wrote a whole lot about it so far — it’s all up on the <a href="http://bitbucket.org/tstone/jquery-markedit/wiki/Home">Wiki</a>. There is still lots more documentation to come.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

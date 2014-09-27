@@ -1,0 +1,358 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Exploring Multi-Inheritance in Ruby ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2012 blog_2012_exploring-multi-inheritance-in-ruby">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Exploring Multi-Inheritance in Ruby</h1>
+
+      <p><a href="http://ruby-lang.org">Ruby</a> allows a <em>kind</em> of multi inheritance.  First, ruby allows single class to class inheritance found in every traditional OO language.</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5</pre></td><td class="code"><pre><span class="k">class</span> <span class="nc">A</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">B</span> <span class="o">&lt;</span> <span class="no">A</span>
+<span class="k">end</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>In addition to class inheritance, ruby also provides <code>modules</code> or &quot;mixins&quot; which are a kind of interface coupled with implementation.  These modules often contain class-agnostic behaviors or traits.</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15</pre></td><td class="code"><pre><span class="k">module</span> <span class="nn">Printable</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"Printed!"</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">A</span>
+    <span class="kp">include</span> <span class="no">Printable</span>
+<span class="k">end</span>
+
+<span class="n">obj</span> <span class="o">=</span> <span class="no">A</span><span class="p">.</span><span class="nf">new</span>
+<span class="n">obj</span><span class="p">.</span><span class="nf">print</span>
+
+<span class="c1"># Output:</span>
+<span class="c1"># =&gt; Printed!</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>That&#39;s all well and good, but what happens if the same method is defined on both the <code>module</code> and the <code>class</code>?</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19</pre></td><td class="code"><pre><span class="k">module</span> <span class="nn">Printable</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"Printed!"</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">A</span>
+    <span class="kp">include</span> <span class="no">Printable</span>
+
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"A!"</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="n">obj</span> <span class="o">=</span> <span class="no">A</span><span class="p">.</span><span class="nf">new</span>
+<span class="n">obj</span><span class="p">.</span><span class="nf">print</span>
+
+<span class="c1"># Output:</span>
+<span class="c1"># =&gt; A!</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>In these cases ruby follows the rule of &quot;closest proximity wins&quot;.  In this case the <code>print</code> method defined on <code>A</code> is closer to <code>obj</code>.  Ruby determines this by running a &quot;search path&quot;, looking first at the object instance, then at the child-most class, then that class&#39; it&#39;s mixins, then the parent classes, and the parent class&#39; mixins and so on up the chain.</p>
+
+<p>Where things begin to get interesting is that ruby provides a <code>super</code> method.  When ruby finds a match to a given method, it stops and runs that method.  <code>super</code> basically tells ruby to execute the possible match in the search path.  If <code>A#print</code> were modified to include super, the output would become:</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="c1"># Output:</span>
+<span class="c1"># =&gt; A!</span>
+<span class="c1"># =&gt; Printed!</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>This is because ruby would first find <code>A#print</code>, then calling super would invoke <code>Printable#print</code>.</p>
+
+<p>In considering this, it&#39;s a bit different than most OO languages. Typically, <code>super</code> refers only to the parent class.  And certainly, if <code>A</code> were inheriting from another class super <em>might</em> refer to that. But in the example above <code>super</code> is actually running code from the mixin.  In effect, it&#39;s treating the mixin as if it were a parent.</p>
+
+<p>So what happens if <em>both</em> a parent and a mixin have the same method?</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21</pre></td><td class="code"><pre><span class="k">module</span> <span class="nn">X</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"X"</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">A</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"A"</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">B</span> <span class="o">&lt;</span> <span class="no">A</span>
+    <span class="kp">include</span> <span class="no">X</span>
+<span class="k">end</span>
+
+<span class="n">obj</span> <span class="o">=</span> <span class="no">B</span><span class="p">.</span><span class="nf">new</span>
+<span class="n">obj</span><span class="p">.</span><span class="nf">print</span>
+
+<span class="c1"># Output:</span>
+<span class="c1"># =&gt; "X"</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>In this case the <code>module</code> wins.  Why?  Because it has the closest proximity (another way of saying this is it&#39;s the lowest down on the inheritance chain).  What&#39;s interesting about ruby&#39;s search chain for method precedence is that if a class contains more than one module, it takes the modules in the reverse order they were added to the class.</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25</pre></td><td class="code"><pre><span class="k">module</span> <span class="nn">X</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"X"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">module</span> <span class="nn">Y</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"Y"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">A</span>
+    <span class="kp">include</span> <span class="no">X</span>
+    <span class="kp">include</span> <span class="no">Y</span>
+<span class="k">end</span>
+
+<span class="n">obj</span> <span class="o">=</span> <span class="no">B</span><span class="p">.</span><span class="nf">new</span>
+<span class="n">obj</span><span class="p">.</span><span class="nf">print</span>
+
+<span class="c1"># Output:</span>
+<span class="c1"># =&gt; Y</span>
+<span class="c1"># =&gt; X</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>You can see the order was Y then X where ruby inferred that modules included last were in closer proximity than those included earlier.</p>
+
+<p>So here&#39;s a question -- what happens when everything included has the same method and they all call <code>super</code>?</p>
+<div class="highlight ruby"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+50
+51
+52
+53
+54
+55
+56
+57</pre></td><td class="code"><pre><span class="c1"># Modules</span>
+
+<span class="k">module</span> <span class="nn">X</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"X"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">module</span> <span class="nn">Y</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"Y"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">module</span> <span class="nn">Z</span>
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"Z"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c1"># Classes</span>
+
+<span class="k">class</span> <span class="nc">A</span>
+
+    <span class="kp">include</span> <span class="no">X</span>
+
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"A"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="k">class</span> <span class="nc">B</span> <span class="o">&lt;</span> <span class="no">A</span>
+
+    <span class="kp">include</span> <span class="no">Y</span>
+    <span class="kp">include</span> <span class="no">Z</span>
+
+    <span class="k">def</span> <span class="nf">print</span>
+        <span class="nb">puts</span> <span class="s2">"B"</span>
+        <span class="k">super</span>
+    <span class="k">end</span>
+<span class="k">end</span>
+
+<span class="c1"># Execute</span>
+
+<span class="n">obj</span> <span class="o">=</span> <span class="no">B</span><span class="p">.</span><span class="nf">new</span>
+<span class="n">obj</span><span class="p">.</span><span class="nf">print</span>
+
+<span class="c1"># Output:</span>
+<span class="c1"># =&gt; B</span>
+<span class="c1"># =&gt; Z</span>
+<span class="c1"># =&gt; Y</span>
+<span class="c1"># =&gt; A</span>
+<span class="c1"># =&gt; X</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Notice that <code>super</code> doesn&#39;t mind if the method is on a module or on a class.  Also notice that ruby favors methods on the parent class first before methods on the parent class&#39; mixins.</p>
+
+<p>Also of note is that <code>X#print</code> calls <code>super</code> which because it&#39;s last in the search chain there is nothing &quot;above&quot; it.  However instead of throwing an error it just does nothing.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

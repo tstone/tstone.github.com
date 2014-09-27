@@ -1,0 +1,89 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Abstract Types in Scala ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2010 blog_2010_abstract-types-in-scala">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Abstract Types in Scala</h1>
+
+      <p>Whenever I learn new programming languages, there is invariably features of the language that will surprise me.  One of those in Scala (one of many actually) is abstract types.  When I first read the textual description of an abstract type, I wondered what use it would ever entail.  However, the authors of <a href="http://programming-scala.labs.oreilly.com/">Programming Scala</a> gave a very clear example of proper use.</p>
+
+<p>This code snippet comes from Chapter 2 of the book.</p>
+
+<p>Starting with an abstract class, we can declare an abstract type.  In this case, type <code>In</code> on our class <code>BulkReader</code> is abstract.  It’s there, but it does not have a concrete type associated with it.  Yet, our value <code>Source</code> is typed as type <code>In</code>.  How can this be?</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5</pre></td><td class="code"><pre><span class="k">abstract</span> <span class="k">class</span> <span class="nc">BulkReader</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">In</span>
+  <span class="k">val</span> <span class="n">source</span><span class="k">:</span> <span class="kt">In</span>
+  <span class="k">def</span> <span class="n">read</span><span class="k">:</span> <span class="kt">String</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The magic comes when we declare a concrete version of <code>BulkReader</code> and can assign a concrete type to “In”:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15</pre></td><td class="code"><pre><span class="k">class</span> <span class="nc">StringBulkReader</span><span class="o">(</span><span class="k">val</span> <span class="n">source</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">BulkReader</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">In</span> <span class="o">=</span> <span class="nc">String</span>
+  <span class="k">def</span> <span class="n">read</span> <span class="k">=</span> <span class="n">source</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">FileBulkReader</span><span class="o">(</span><span class="k">val</span> <span class="n">source</span><span class="k">:</span> <span class="kt">File</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">BulkReader</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">In</span> <span class="o">=</span> <span class="nc">File</span>
+  <span class="k">def</span> <span class="n">read</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">in</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">BufferedInputStream</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileInputStream</span><span class="o">(</span><span class="n">source</span><span class="o">))</span>
+    <span class="k">val</span> <span class="n">numBytes</span> <span class="k">=</span> <span class="n">in</span><span class="o">.</span><span class="n">available</span><span class="o">()</span>
+    <span class="k">val</span> <span class="n">bytes</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Byte</span><span class="o">](</span><span class="n">numBytes</span><span class="o">)</span>
+    <span class="n">in</span><span class="o">.</span><span class="n">read</span><span class="o">(</span><span class="n">bytes</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">numBytes</span><span class="o">)</span>
+    <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="n">bytes</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Very cool!  In our two concrete instances of <code>BulkReader</code> we assigned two different types to our abstract type <code>In</code>.  Note that the value typed as <code>In</code>, “source” is actually part of the concrete class’s constructor which is, at this point for me, completely mind bending in terms of flexibility towards class design.</p>
+
+<p>I have a feeling it will take me some time to get used to this notion and power before I really start to design code that makes use of it.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,58 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Ignoring .pyc Files in NetBeans ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2009 blog_2009_ignore-pyc-files-in-netbeans">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Ignoring .pyc Files in NetBeans</h1>
+
+      <p>I started using the <a href="http://www.netbeans.org/features/python/">Netbeans 6.5 Python (Early Access) IDE</a> a couple of weeks ago, and while all seemed to be going well, one thing that bugged me was seeing all the <a href="http://www.fileinfo.com/extension/pyc">.pyc (python compiled file)</a> in the treeviews. Turns out NetBeans has a simple way to fix this:</p>
+
+<ul>
+<li>On the menu go to Tools &gt; Options</li>
+<li>Then &quot;Miscellaneous&quot;</li>
+<li>Then &quot;Files&quot; tab</li>
+<li>And find the section &quot;Files Ignored by the IDE&quot;</li>
+</ul>
+
+<p>This value is a <a href="http://www.regular-expressions.info/">regular expression</a> which makes it easy to add the functionality we&#39;re looking for.</p>
+
+<p>Change this:</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>^(CVS|SCCS|vssver.?\.scc|#.*#|%.*%|_svn)$|~$|^\.(?!htaccess$).*$
+</pre></td></tr></tbody></table>
+</div>
+
+<p>To this:</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>^(CVS|SCCS|vssver.?\.scc|#.*#|%.*%|_svn)$|~$|^\.(?!htaccess$)|pyc.*$
+</pre></td></tr></tbody></table>
+</div>
+
+<p>You could easily use this method for any other file type you&#39;d like to ignore. Just add <code>|extension</code> before the <code>.*$</code>.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

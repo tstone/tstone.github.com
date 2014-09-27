@@ -1,0 +1,145 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Angular Filters for Play ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2014 blog_2014_angular-filters-for-play">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Angular Filters for Play</h1>
+
+      <p>I was looking at the Angular filters a bit.  As a pattern I think they are conceptually simpler than our current notion of presenters in Scala.  For consistency of development on a Play/Angular project, I was wondering if it would be good to have one concept of how to deal with presentation for both JS and Scala.  I prototyped a filter system for Twirl that is functionally equivalent to Angular filters in Scala and the syntax is super close too (unfortunately Twirl has already reserved <code>|</code> and <code>||</code> so I used <code>|||</code>, but that operator could be whatever).</p>
+
+<p>It&#39;s pretty common to use implicit classes to apply the presenter pattern in Play...</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19</pre></td><td class="code"><pre><span class="c1">// presenters.scala
+</span><span class="k">object</span> <span class="nc">presenters</span> <span class="o">{</span>
+  <span class="k">implicit</span> <span class="k">class</span> <span class="nc">StringPresenter</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">reverse</span> <span class="k">=</span> <span class="nc">Html</span><span class="o">(</span><span class="n">s</span><span class="o">.</span><span class="n">reverse</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">implicit</span> <span class="nc">DateTimePresenter</span><span class="o">(</span><span class="n">dt</span><span class="k">:</span> <span class="kt">DateTime</span><span class="o">){</span>
+    <span class="k">def</span> <span class="n">format</span><span class="o">(</span><span class="n">f</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nc">DateTimeFormat</span><span class="o">.</span><span class="n">forPattern</span><span class="o">(</span><span class="n">f</span><span class="o">).</span><span class="n">print</span><span class="o">(</span><span class="n">dt</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="c1">// index.scala.html
+</span><span class="nd">@import</span> <span class="n">presenters</span><span class="o">.</span><span class="k">_</span>
+
+<span class="nd">@main</span> <span class="o">{</span>
+  <span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;@</span><span class="n">message</span><span class="o">.</span><span class="n">reverse</span><span class="o">&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">h3</span><span class="o">&gt;@</span><span class="n">event</span><span class="o">.</span><span class="n">start</span><span class="o">.</span><span class="n">format</span><span class="o">(</span><span class="s">"YYYY-MM-dd"</span><span class="o">)&lt;/</span><span class="n">h3</span><span class="o">&gt;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Filters as a concept however are really just a function.  You could make a <code>|</code> method that implicitly used such functions...</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30</pre></td><td class="code"><pre><span class="c1">// filters.scala
+</span><span class="k">object</span> <span class="nc">filters</span> <span class="o">{</span>
+
+  <span class="c1">// --- Setup (once for all filters) ---
+</span>
+  <span class="k">type</span> <span class="kt">HtmlFilter</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="k">=</span> <span class="o">(</span><span class="n">A</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="nc">Html</span>
+
+  <span class="k">implicit</span> <span class="k">class</span> <span class="nc">Filtererer</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">a</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="o">|||(</span><span class="n">filter</span><span class="k">:</span> <span class="kt">HtmlFilter</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span><span class="k">:</span> <span class="kt">Html</span> <span class="o">=</span> <span class="n">filter</span><span class="o">(</span><span class="n">a</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="c1">// --- Filter Examples ---
+</span>
+  <span class="k">val</span> <span class="n">reverse</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HtmlFilter</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Html</span><span class="o">(</span><span class="n">s</span><span class="o">.</span><span class="n">reverse</span><span class="o">)</span>
+  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">format</span><span class="o">(</span><span class="n">f</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">HtmlFilter</span><span class="o">[</span><span class="kt">DDateTime</span><span class="o">]</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">date</span><span class="k">:</span> <span class="kt">DateTime</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Html</span><span class="o">(</span><span class="nc">DateTimeFormatter</span><span class="o">.</span><span class="n">forPattern</span><span class="o">(</span><span class="n">f</span><span class="o">).</span><span class="n">print</span><span class="o">(</span><span class="n">date</span><span class="o">))</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+
+
+<span class="c1">// index.scala.html
+</span><span class="nd">@import</span> <span class="n">filters</span><span class="o">.</span><span class="k">_</span>
+
+<span class="nd">@main</span> <span class="o">{</span>
+  <span class="o">&lt;</span><span class="n">h1</span><span class="o">&gt;@{</span> <span class="n">message</span> <span class="o">|||</span> <span class="n">reverse</span> <span class="o">}&lt;/</span><span class="n">h1</span><span class="o">&gt;</span>
+  <span class="o">&lt;</span><span class="n">span</span><span class="o">&gt;@{</span> <span class="n">event</span><span class="o">.</span><span class="n">start</span> <span class="o">|||</span> <span class="n">format</span><span class="o">(</span><span class="s">"YYYY-MM-dd"</span><span class="o">)</span> <span class="o">}&lt;/</span><span class="n">span</span><span class="o">&gt;</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The limitation here compared to Angular filters is that they cannot be chained.  ...or at least I haven&#39;t yet figured that part out.</p>
+
+<p><a href="https://gist.github.com/tstone/db350000ba9230bdfa38">gist</a></p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

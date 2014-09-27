@@ -1,0 +1,176 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ So I Started Working on a Scala Web Framework... ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2014 blog_2014_so-i-started-working-on-a-scala-web-framework">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">So I Started Working on a Scala Web Framework...</h1>
+
+      <p>...even though I probably shouldn&#39;t have.  At some point attempting to design something on your own will often lean to a better understanding and appreciation of what is already out there.</p>
+
+<p>The HTTP pipeline will consist of two type signatures:</p>
+
+<ul>
+<li>Request Processor:  <code>PartialFunction[Request, Either[Request, Response]]</code></li>
+<li>Response Processor:  <code>PartialFunction[Request, Request]</code></li>
+</ul>
+
+<p>A <code>RequestProcessor</code> takes in a <code>Request</code>, can matches a particular case of that <code>Request</code>, returning either a new <code>Request</code> (modified in some way) or a <code>Response</code>.  If a <code>Response</code> is returned the framework will stop processing at that point and return that response.  If a <code>Request</code> is returned the framework will continue processing, using that new <code>Request</code>. And if the case isn&#39;t handled it will just fall through to the next <code>RequestProcessor</code>.</p>
+
+<p>The web framework will have an &quot;entry point&quot; where a composed function of request processors and response processors is given.  Something like…</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9</pre></td><td class="code"><pre><span class="nc">App</span><span class="o">.</span><span class="n">beforeAll</span><span class="o">(</span>
+  <span class="nc">FauxHttpMethod</span> <span class="n">andThen</span>
+  <span class="nc">Cookies</span> <span class="n">andThen</span>
+  <span class="nc">Router</span>
+<span class="o">)</span>
+
+<span class="nc">App</span><span class="o">.</span><span class="n">afterAll</span><span class="o">(</span>
+  <span class="n">xPoweredBy</span>
+<span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>A request processor is what other frameworks like Django or Connect refer to as &quot;middleware&quot;.  I think that&#39;s a weird name however and I&#39;ll demonstrate why in a second.</p>
+
+<p>As you probably noticed, the router is just a request processor, and happens to be the last one in the chain.  This is also similar to how other frameworks do it.  But I realize something interesting about that — It&#39;s possible to have different types of routers, and to choose the one that best suits the application.  An app could use more than 1 type of router.  Or someone could write a very simple router if that&#39;s all that was needed.</p>
+
+<p>Example:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8</pre></td><td class="code"><pre><span class="k">type</span> <span class="kt">RequestProcessor</span> <span class="o">=</span> <span class="nc">ParitalFunction</span><span class="o">[</span><span class="kt">Request</span>, <span class="kt">Either</span><span class="o">[</span><span class="kt">Request</span>, <span class="kt">Response</span><span class="o">]]</span>
+
+<span class="k">object</span> <span class="nc">SimpleRouter</span> <span class="k">extends</span> <span class="nc">RequestProcessor</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">apply</span><span class="o">(</span><span class="n">req</span><span class="k">:</span> <span class="kt">Request</span><span class="o">)</span><span class="k">:</span> <span class="kt">Either</span><span class="o">[</span><span class="kt">Request</span>, <span class="kt">Response</span><span class="o">]</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">req</span> <span class="k">if</span> <span class="n">req</span><span class="o">.</span><span class="n">url</span><span class="o">.</span><span class="n">startsWith</span><span class="o">(</span><span class="s">"/whatever"</span><span class="o">)</span> <span class="k">=&gt;</span> <span class="n">doSomething</span><span class="o">(</span><span class="n">req</span><span class="o">)</span>
+    <span class="k">case</span> <span class="k">_</span> <span class="k">=&gt;</span> <span class="nc">Http</span><span class="o">(</span><span class="mi">404</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The framework would probably come with a base <code>Router</code> trait that defined some of the plumbing around calling a controller.  A controller is simply <code>Request =&gt; Future[Response]</code>.  However, as the plumbing side of always passing in <code>Request</code> would be annoying, controller methods could be implemented like they are in Play, where the controller method actually returns a function of that type signature and the router is responsible for applying it.</p>
+
+<p>Perhaps something along the lines of the following…</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21</pre></td><td class="code"><pre><span class="k">class</span> <span class="nc">MyRouter</span> <span class="k">extends</span> <span class="nc">Router</span> <span class="k">with</span> <span class="nc">Controllers</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">process</span><span class="o">(</span><span class="n">req</span><span class="k">:</span> <span class="kt">Request</span><span class="o">)</span><span class="k">:</span> <span class="kt">Future</span><span class="o">[</span><span class="kt">Action</span><span class="o">]</span> <span class="k">=</span> <span class="n">req</span> <span class="k">match</span> <span class="o">{</span>
+
+    <span class="c1">// Assets
+</span>    <span class="k">case</span> <span class="nc">GET</span><span class="o">(</span><span class="s">"assets"</span><span class="o">,</span> <span class="n">file</span><span class="k">:</span> <span class="kt">String*</span><span class="o">)</span>                   <span class="k">=&gt;</span> <span class="nc">Assets</span><span class="o">.</span><span class="n">at</span><span class="o">(</span><span class="n">path</span> <span class="k">=</span> <span class="s">"/public"</span><span class="o">,</span> <span class="n">file</span><span class="o">)</span>
+
+    <span class="c1">// Print Preview
+</span>    <span class="k">case</span> <span class="nc">GET</span><span class="o">(</span><span class="s">"testPP"</span><span class="o">)</span>                                  <span class="k">=&gt;</span> <span class="nc">PrintPreviewTest</span><span class="o">.</span><span class="n">test</span>
+    <span class="k">case</span> <span class="nc">GET</span><span class="o">(</span><span class="s">"testPP"</span><span class="o">,</span> <span class="n">placeType</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>               <span class="k">=&gt;</span> <span class="nc">PrintPreviewTest</span><span class="o">.</span><span class="n">test</span><span class="o">(</span><span class="n">placeType</span><span class="o">)</span>
+
+    <span class="c1">// Backwards Compatibility POI
+</span>    <span class="k">case</span> <span class="nc">GET</span><span class="o">(</span><span class="s">"p"</span><span class="o">,</span> <span class="n">id</span><span class="k">:</span> <span class="kt">Regex</span><span class="o">(</span><span class="err">"[0</span><span class="kt">-</span><span class="err">9]"</span><span class="o">))</span>                   <span class="k">=&gt;</span> <span class="nc">Application</span><span class="o">.</span><span class="n">poi</span><span class="o">(</span><span class="n">id</span><span class="o">.</span><span class="n">value</span><span class="o">)</span>
+    <span class="k">case</span> <span class="nc">GET</span><span class="o">(</span><span class="s">"places"</span><span class="o">,</span> <span class="n">id</span><span class="k">:</span> <span class="kt">Regex</span><span class="o">(</span><span class="err">"</span><span class="o">(</span><span class="kt">.*</span><span class="o">)</span><span class="kt">\\-</span><span class="o">(</span><span class="kt">&lt;id&gt;</span><span class="err">[0</span><span class="kt">-</span><span class="err">9]</span><span class="o">)</span><span class="err">"</span><span class="o">))</span> <span class="k">=&gt;</span> <span class="nc">Application</span><span class="o">.</span><span class="n">poi</span><span class="o">(</span><span class="n">id</span><span class="o">.</span><span class="n">group</span><span class="o">(</span><span class="s">"id"</span><span class="o">))</span>
+
+    <span class="c1">// Weather
+</span>    <span class="k">case</span> <span class="nc">GET</span><span class="o">(</span><span class="s">"/weather"</span><span class="o">)</span> <span class="k">if</span> <span class="o">(</span>
+      <span class="n">req</span><span class="o">.</span><span class="nc">QueryString</span><span class="o">(</span><span class="s">"lat"</span><span class="o">).</span><span class="n">isPresent</span> <span class="o">&amp;&amp;</span>
+      <span class="n">req</span><span class="o">.</span><span class="nc">QueryString</span><span class="o">(</span><span class="s">"lng"</span><span class="o">).</span><span class="n">isPresent</span> <span class="o">&amp;&amp;</span>
+      <span class="n">req</span><span class="o">.</span><span class="nc">QueryString</span><span class="o">(</span><span class="s">"postalcode"</span><span class="o">).</span><span class="n">isPresent</span><span class="o">)</span>          <span class="k">=&gt;</span> <span class="nc">Weather</span><span class="o">.</span><span class="n">initialWeather</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>I haven&#39;t fully flushed out how to use unapply to implement all of the above, but I think something along these lines would be possible.</p>
+
+<p>There are a couple interesting benefits in making things open and simple like this:</p>
+
+<ol>
+<li>Any DI strategy can be used.  In this case I was intending Cake pattern to be used (hence the &quot;with Controllers&quot;) but it&#39;s really up to the developer.</li>
+<li>If simple routing is all that&#39;s needed, a lighter weight router can be used.  Where regex is needed (and the performance penalty of using it is acceptable), that type of router can be used.</li>
+<li>Routing shouldn&#39;t just be on the HTTP method and URL.  You should also be able to steer routes based on HTTP headers, parameters, etc.</li>
+</ol>
+
+<p>So about Controllers, I mentioned before I didn&#39;t like the name middleware.  That&#39;s because I&#39;d like <code>RequestProcessors</code> to be able to be used on controllers as well.  Controller methods themselves could perhaps be <code>PartialFunctions</code>.</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10</pre></td><td class="code"><pre><span class="k">import</span> <span class="nn">app.authentication.Authenticate</span>
+
+<span class="k">class</span> <span class="nc">Record</span> <span class="k">extends</span> <span class="nc">Controller</span> <span class="o">{</span>
+
+  <span class="c1">// private def Fetch = ???
+</span>
+  <span class="k">def</span> <span class="n">show</span><span class="o">(</span><span class="n">id</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">=</span> <span class="nc">Authenticate</span> <span class="n">andThen</span> <span class="nc">Fetch</span><span class="o">(</span><span class="n">id</span><span class="o">)</span> <span class="n">andThen</span> <span class="nc">Action</span> <span class="o">{</span> <span class="k">case</span> <span class="n">req</span> <span class="k">=&gt;</span>
+    <span class="o">???</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>I haven&#39;t worked all those details out, but something to that effect.  You can see <code>Authenticate</code> and <code>Fetch</code> being applied to process the request prior to the method actually running.</p>
+
+<p>Anyways, those were some thoughts on how this thing might come together.  I started a github for this project:</p>
+
+<p><a href="https://github.com/tstone/Windlass">Windlass</a></p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

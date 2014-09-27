@@ -1,0 +1,170 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Oh, Hello Covariance ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2014 blog_2014_oh-hello-covariance">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Oh, Hello Covariance</h1>
+
+      <p>Having read about co- and contra-variance when I first learned Scala, I, for the most part, stuck them in the back of my head and forgot about it.  As it turned out, I was actually able to solve a real world problem with it.</p>
+
+<p>The problem that I needed to solve was two fold:</p>
+
+<ol>
+<li>Can we have an abstract class (or trait) which has multiple implementations that all return the same type but take in a different types as parameters</li>
+<li>Can we deal with instances of these classes in bulk (ie. <code>Seq</code> or <code>Set</code>)</li>
+</ol>
+
+<p>The particular use case of this was in creating a structured way that 3rd party tracking pixels could be generated.  On one hand every 3rd party has something slightly different they need for their pixel.  On the other hand we wanted to be able to
+deal with pixels generically downstream.  For a given web request we will have a <code>Seq</code> of 3rd parties that need to have pixels generated for.  the goal was to take that list and turn it into a list of things that needed to be tracked, events, pixels, urls, whatever.</p>
+
+<p>The first part of the problem is somewhat easy to solve.  Expose a function that returns impression pixels for a given provider.</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="k">abstract</span> <span class="k">class</span> <span class="nc">TrackingProvider</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">getImpressionPixels</span><span class="o">(</span><span class="n">foo</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">bar</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span><span class="k">:</span> <span class="kt">TrackingPixel</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The tricky part however is that each provider needs different data.  Vendor A might need some values out of the cookie and querystring where as Vendor B might need something from a database.  Polymorphism is the answer.</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="k">abstract</span> <span class="k">class</span> <span class="nc">TrackingProvider</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">getImpressionPixels</span><span class="o">(</span><span class="n">payload</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">TrackingPixel</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The class itself becomes polymorphic, and any implementation can supply it&#39;s definition of what <code>A</code> actually is.  As an example, an implementation for (a fictitious) <code>VendorA</code> might look like:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5</pre></td><td class="code"><pre><span class="k">case</span> <span class="k">class</span> <span class="nc">VendorATrackingConfig</span><span class="o">(</span><span class="n">vendorId</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">propertyId</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span>
+
+<span class="k">class</span> <span class="nc">VendorATrackingProvider</span> <span class="k">extends</span> <span class="nc">TrackingProvider</span><span class="o">[</span><span class="kt">VendorATrackingConfig</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">getImpressionPixels</span><span class="o">(</span><span class="n">config</span><span class="k">:</span> <span class="kt">VendorATrackingProvider</span><span class="o">)</span> <span class="k">=</span> <span class="o">???</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Because the class itself is polymorphic, when we inherit from it, we can specify what A is: <code>extends TrackingProvider[VendorATrackingConfig]</code>.</p>
+
+<p>However, what this does not solve is the latter part:  We cannot deal with these in bulk.  For example, let&#39;s say we wanted to have a function to turn <code>Seq[ThirdParty]</code> into <code>Seq[TrackingProvider]</code>.  The problem is, you can&#39;t just have a <code>Seq[TrackingProvider]</code>, you must have a <code>Seq[TrackingProvider[SOME_TYPE]]</code> because <code>TrackingProvider</code> as a class is polymorphic.  We have this same issue, for example with <code>Seq</code>/<code>Option</code>.  You can&#39;t have <code>Seq[Option]</code>.  You must have <code>Seq[Option[TYPE]]</code>.</p>
+
+<p>As an example, the following code would be invalid because a Seq must all be the same type.  Given the following list…</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4</pre></td><td class="code"><pre><span class="nc">Seq</span><span class="o">(</span>
+  <span class="k">new</span> <span class="nc">VendorATrackingProvider</span><span class="o">,</span>
+  <span class="k">new</span> <span class="nc">VendorBTrackingProvider</span>
+<span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>...this is actually how Scala sees that list:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4</pre></td><td class="code"><pre><span class="nc">Seq</span><span class="o">(</span>
+  <span class="nc">TrackingProvider</span><span class="o">[</span><span class="kt">VendorATrackingConfig</span><span class="o">],</span>
+  <span class="nc">TrackingProvider</span><span class="o">[</span><span class="kt">VendorBTrackingConfig</span><span class="o">]</span>
+<span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>And you can&#39;t mix types like that... unless you tell Scala otherwise.</p>
+
+<p>Our first thought was to create a base type that the configs could inherit from. This was a partially correct solution.</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5</pre></td><td class="code"><pre><span class="k">trait</span> <span class="nc">TrackingConfig</span>
+
+<span class="k">abstract</span> <span class="k">class</span> <span class="nc">TrackingProvider</span><span class="o">[</span><span class="kt">A</span> <span class="k">&lt;:</span> <span class="kt">TrackingConfig</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">getImpressionPixels</span><span class="o">(</span><span class="n">payload</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">TrackingPixel</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The <code>A &lt;: TrackingConfig</code> part specifies a type restriction on <code>A</code> that it must be or be a child of <code>TrackingConfig</code>.</p>
+
+<p>If all the <code>$VENDORTrackingConfig</code> classes were to extend that trait, it would seem like the following should be possible:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9</pre></td><td class="code"><pre><span class="k">case</span> <span class="k">class</span> <span class="nc">VendorATrackingConfig</span><span class="o">(</span><span class="n">vendorId</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">propertyId</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">TrackingConfig</span>
+<span class="k">case</span> <span class="k">class</span> <span class="nc">VendorBTrackingConfig</span><span class="o">(</span><span class="n">customTokenFoo</span><span class="k">:</span> <span class="kt">String</span><span class="o">,</span> <span class="n">partnerId</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">TrackingConfig</span>
+
+<span class="c1">// ...
+</span>
+<span class="nc">Seq</span><span class="o">(</span>
+  <span class="k">new</span> <span class="nc">VendorATrackingProvider</span><span class="o">,</span>
+  <span class="k">new</span> <span class="nc">VendorBTrackingProvider</span>
+<span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>What&#39;s the type of the <code>Seq</code>?  It should be <code>Seq[TrackingProvider[TrackingConfig]]</code>, right?  By default Scala is very strict and it still sees the types as being mixed.  That&#39;s where a feature of the scala type system comes in, and it&#39;s the feature that made our tracking code possible:  Covariance.</p>
+
+<p>Covariance allows us to say, &quot;<code>Seq[TrackingProvider[VendorATrackingConfig]]</code> is the same thing as <code>Seq[TrackingProvider[TrackingConfig]]</code>.&quot;  That&#39;s relevant because if we can tell the scala compiler to treat <code>VendorATrackingConfig</code> as if it were a <code>TrackingConfig</code>, then it means we could have a &quot;mixed&quot; set of <code>TrackingProvider</code> that each take their own config that we can treat as bulk because scala will deal with them all as if they were <code>TrackingConfig</code>.</p>
+
+<p>The code for covariance is to add a + to the front of the type:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3</pre></td><td class="code"><pre><span class="k">abstract</span> <span class="k">class</span> <span class="nc">TrackingProvider</span><span class="o">[</span><span class="kt">+A</span> <span class="k">&lt;:</span> <span class="kt">TrackingConfig</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">getImpressionPixels</span><span class="o">(</span><span class="n">payload</span><span class="k">:</span> <span class="kt">A</span><span class="o">)</span><span class="k">:</span> <span class="kt">TrackingPixel</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>This now allows us to express the following:</p>
+<div class="highlight scala"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4</pre></td><td class="code"><pre><span class="k">val</span> <span class="n">providers</span> <span class="k">=</span> <span class="nc">Seq</span><span class="o">(</span>
+  <span class="k">new</span> <span class="nc">VendorATrackingProvider</span><span class="o">,</span>
+  <span class="k">new</span> <span class="nc">VendroBTrackingProvider</span>
+<span class="o">)</span>
+</pre></td></tr></tbody></table>
+</div>
+
+<p>The type of providers here is <code>Seq[TrackingProvider[TrackingConfig]]</code>.  What&#39;s even more interesting about this though is that while Scala might treat <code>VendorBTrackingProvider[VendorBTrackingConfig]</code> as if it were <code>TrackingProvider[TrackingProvider]</code>, because of dynamic binding, whenever we invoke the provider it&#39;s calling the actual <code>VendorBTrackingProvider</code> code, not the generic code provided by <code>TrackingProvider</code>.</p>
+
+<p>By using covariance we are able to deal with implementations in bulk, without having to call every provider every single time.  This makes things highly flexible and re-usable.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>

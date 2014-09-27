@@ -1,0 +1,106 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge;chrome=1" />
+    <title>[ Setting up Sublime Text 2 for Console Use ].blue</title>
+    <link rel="alternate" type="application/atom+xml" title="Atom Feed" href="/feed.xml" />
+
+    <link href="http://fonts.googleapis.com/css?family=Montserrat:400,700" rel="stylesheet" type="text/css" media="(min-width: 767px)">
+    <link href="/stylesheets/normalize.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/layout.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/syntax-theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/theme.css" rel="stylesheet" type="text/css" /><link href="/stylesheets/icons.css" rel="stylesheet" type="text/css" />
+
+    <script src="/javascripts/all.js" type="text/javascript"></script>
+  </head>
+
+  <body class="blog blog_2012 blog_2012_setting-up-sublime-text-2-for-console-use">
+    <header class="page">
+      <h1><a href="/">[ ].blue</a></h1>
+      <h6>Blog of Titus Stone</h6>
+    </header>
+    <main>
+
+        <article>
+          <h1 class="title">Setting up Sublime Text 2 for Console Use</h1>
+
+      <p>As a follow-up to my <a href="http://www.typeof.co/post/a-better-terminal-for-windows">A Better Terminal for Windows</a>, one thing you&#39;ll find quickly is that being able to use a good editor from the command line is very important.  Since <a href="http://www.sublimetext.com/2">Sublime Text 2</a> is my weapon of choice I&#39;ll be using that, but really the instructions below should work with just about any editor.</p>
+
+<h3>Step 1: Add To Path</h3>
+
+<p>In order for all of this to work, the first step is to add the path to the sublime exe to your bash shell.  This is done with the <code>export</code> command, but since we want it to persist for all sessions we&#39;ll need to add it to the <code>.bashrc</code>.</p>
+<div class="highlight shell"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>notepad ~/.bashrc
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Within the bashrc, add the following:</p>
+<div class="highlight shell"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="nb">export </span><span class="nv">PATH</span><span class="o">=</span><span class="nv">$PATH</span>:/c/Program<span class="se">\ </span>Files/Sublime<span class="se">\ </span>Text<span class="se">\ </span>2
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Of course, if you have installed your sublime to somewhere other than that use that path instead.  Note that the windows path uses spaces, &quot;Program Files&quot;, but under bash or zsh you&#39;ll need to escape that space with a slash <code>\</code>.</p>
+
+<p>Once you&#39;ve restarted the shell the <code>Sublime Text 2</code> folder should be accessible.  You can test this by running sublime from the command line...</p>
+<div class="highlight shell"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre><span class="gp">$ </span>sublime_text.exe
+</pre></td></tr></tbody></table>
+</div>
+
+<h3>Step 2: Add a Dash of Usability</h3>
+
+<p>But really, who wants to type all that out, <code>sublime_text.exe</code> every time?  Also, did you notice that running the exe from the command line &quot;steals&quot; the use of the command line until sublime is closed.  This is the default nature of executing commands on the command line, and both of these issues can be addressed by creating a simple shell script.</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>$ notepad /c/Program\ Files/Sublime\ Text\ 2/sublime
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Notepad will ask you if you want to create that file.  Say yes, then enter the following:</p>
+<div class="highlight shell"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2</pre></td><td class="code"><pre><span class="c">#!/bin/bash</span>
+sublime_text.exe <span class="nv">$1</span> &amp;
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Save that file.</p>
+
+<h3>Step 3: Making it Executable</h3>
+
+<p>The last thing we need to do is mark our <code>sublime</code> shell script as being executable.  By default, bash will just assume that the file we created is a text file (which it is, but stay with me).  In order to be able to execute it, we need to make it as executable.</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1</pre></td><td class="code"><pre>$ chmod 444 /c/Program\ Files/Sublime\ Text\ 2/sublime
+</pre></td></tr></tbody></table>
+</div>
+
+<p>That&#39;s it.  With this setup there are several useful things you can now use it for:</p>
+<div class="highlight plaintext"><table style="border-spacing: 0"><tbody><tr><td class="gutter gl" style="text-align: right"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11</pre></td><td class="code"><pre># Open sublime from the console
+$ sublime
+
+# Open a file from the console
+$ sublime ~/.bashrc
+
+# Open a directory from the console
+$ sublime ~
+
+# Open the current directory from the console
+$ sublime .
+</pre></td></tr></tbody></table>
+</div>
+
+<p>Have fun.</p>
+
+
+        </article>
+
+    </main>
+    <footer>
+      <span>&copy; Titus Stone</span>
+      <a href="http://github.com/tstone">Github</a>
+      <a href="http://twitter.com/andstuff">Twitter</a>
+    </footer>
+  </body>
+</html>
