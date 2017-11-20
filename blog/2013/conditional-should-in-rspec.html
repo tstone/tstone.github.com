@@ -1,0 +1,48 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Conditional Should in RSpec"> <meta property="og:url" content="http://array.blue/blog/2013/conditional-should-in-rspec.html"> <meta property="article:published_time" content="2013-04-22T14:44:00Z"> <meta property="article:tag" content=rspec> <meta property="article:tag" content=testing> <title>[ Conditional Should in RSpec ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2013 blog_2013_conditional-should-in-rspec" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Conditional Should in RSpec</h1> <h4 class=date itemprop=dateCreated>April 22, 2013</h4> <div itemprop=articleBody> <p>Something I&#39;ve been trying to get more comfortable with is custom matchers for RSpec. In my opinion, behaviour tests should be as short as possible. After all, they convey a certainly level of documentation, but their goal is really to allow the developer to express the intended behavior of a given pieces of code.</p> <p>Custom matchers go a long way to shortening up boilerplate code into consise statements which (can) clearly imply intent. The tricky part comes in making them somewhat conditional.</p> <p>I ran into this case today and realized there is an easier solution than might be obvious at first pass.</p> <p>The problem lies in that RSpec somehow parses every should, regardless of the conditional around it. In my case, I had a function which took 4 values. Only the first 3 were requred, but when the 4th was given the custom matcher needed to make sure it was correct too.</p> <div class=highlight><pre class="highlight ruby"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class=rouge-code><pre><span class="no">RSpec</span><span class="o">::</span><span class="no">Matchers</span><span class="p">.</span><span class="nf">define</span> <span class="ss">:have_custom_value</span> <span class="k">do</span> <span class="o">|</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kp">nil</span><span class="o">|</span>
+  <span class="n">match</span> <span class="k">do</span> <span class="o">|</span><span class="n">obj</span><span class="o">|</span>
+    <span class="c1"># ...</span>
+
+    <span class="c1"># RSpec will still assert this:</span>
+    <span class="n">obj</span><span class="p">.</span><span class="nf">prop_that_might_be_there</span><span class="p">.</span><span class="nf">should</span> <span class="o">==</span> <span class="n">d</span> <span class="k">unless</span> <span class="n">d</span><span class="p">.</span><span class="nf">nil?</span>
+
+    <span class="c1"># ...and this:</span>
+    <span class="k">unless</span> <span class="n">d</span><span class="p">.</span><span class="nf">nil?</span>
+        <span class="n">obj</span><span class="p">.</span><span class="nf">prop_that_might_be_there</span><span class="p">.</span><span class="nf">should</span> <span class="o">==</span> <span class="n">d</span>
+    <span class="k">end</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>I&#39;m guessing it has something to do with the DSL magic that RSpec implements behind the scenes, but <code>#should</code> assertions always seem to go through, regardless of the conditional blocks around them.</p> <p>This actually produces a very difficult to track down error because the problem is in the matcher, and like most programmers, it&#39;s easy to assume that&#39;s correct and spend 30 minutes pouring over the code being tested.</p> <p>The solution I found for this is to fallback to <code>expect</code> and give RSpec a block. The block can first contain the conditional to short-circuit the code if the value isn&#39;t defined, then second to test the assertion manually with a conditional.</p> <div class=highlight><pre class="highlight ruby"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class=rouge-code><pre><span class="no">RSpec</span><span class="o">::</span><span class="no">Matchers</span><span class="p">.</span><span class="nf">define</span> <span class="ss">:have_custom_value</span> <span class="k">do</span> <span class="o">|</span><span class="n">a</span><span class="p">,</span> <span class="n">b</span><span class="p">,</span> <span class="n">c</span><span class="p">,</span> <span class="n">d</span><span class="o">=</span><span class="kp">nil</span><span class="o">|</span>
+  <span class="n">match</span> <span class="k">do</span> <span class="o">|</span><span class="n">obj</span><span class="o">|</span>
+    <span class="c1"># ...</span>
+
+    <span class="n">expect</span> <span class="p">{</span> <span class="n">d</span><span class="p">.</span><span class="nf">nil?</span> <span class="o">||</span> <span class="n">obj</span><span class="p">.</span><span class="nf">d</span> <span class="o">==</span> <span class="n">d</span> <span class="p">}.</span><span class="nf">to</span> <span class="n">be_true</span>
+  <span class="k">end</span>
+<span class="k">end</span>
+</pre></td></tr></tbody></table></code></pre></div> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

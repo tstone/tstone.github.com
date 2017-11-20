@@ -1,0 +1,230 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Playing with Functional Composition in CoffeeScript"> <meta property="og:url" content="http://array.blue/blog/2012/playing-with-functional-composition-in-coffeescript.html"> <meta property="article:published_time" content="2012-09-18T15:16:00Z"> <meta property="article:tag" content=coffeescript> <meta property="article:tag" content=javascript> <meta property="article:tag" content=functional-programming> <title>[ Playing with Functional Composition in CoffeeScript ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2012 blog_2012_playing-with-functional-composition-in-coffeescript" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Playing with Functional Composition in CoffeeScript</h1> <h4 class=date itemprop=dateCreated>September 18, 2012</h4> <div itemprop=articleBody> <p>I&#39;ve been doing a lot of studying of <a href="//ruby-lang.org">Ruby</a> the past week or so and as a consequence have been messing around a bit with CoffeeScript. There aren&#39;t many things more controversial in javascript circles than CoffeeScript. It&#39;s been the recipient of about as much hype as it has criticism. In any case, it offers <em>an</em> alternative syntax that along with being ruby-like cuts down a bit on some of the fluff that is often found about javascript code. To that degree, I wanted to re-write some of the filtering and composed function code from the previous two blog posts, but in CoffeeScript.</p> <p>One of the most glaring different things in CoffeeScript is the syntax for anonymous functions: skinny arrow <code>-&gt;</code>.</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="err">/</span><span class="o">/</span> <span class="na">Javascript</span><span class="o">:</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="na">forEach</span><span class="p">(</span><span class="nx">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="nx">console</span><span class="p">.</span><span class="na">log</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span> <span class="p">});</span>
+
+<span class="c1"># CoffeeScript:</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="na">forEach</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">console</span><span class="p">.</span><span class="na">log</span> <span class="nx">x</span>
+</pre></td></tr></tbody></table></code></pre></div> <p><a href="//ryanflorence.com">Ryan Florence </a> wrote a somewhat popular blog post titled, <a href="//ryanflorence.com/2011/case-against-coffeescript/">&quot;A Case Against Using CoffeeScript&quot;</a>, in which he details how studies have shown people recognize symbols faster than words. While that fact may be true, given the above two code samples, it&#39;s easy to see javascript can be symbol-overload at times.</p> <p>But it&#39;s not all peaches and roses. There are sometimes where the coffeescript syntax doesn&#39;t work out so well. <code>reduce</code> is a good example of this. <code>reduce</code> takes two arguments, a callback function and the initial value of the accumulator.</p> <p>These don&#39;t work:</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="c1"># The natural but vauge way this could be written (that doesn't work)</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="na">reduce</span> <span class="p">(</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">acc</span><span class="p">.</span><span class="na">push</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="k">if</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">,</span> <span class="p">[]</span>
+
+<span class="c1"># More explicity, cleanrer syntax (that doesn't work)</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="na">reduce</span> <span class="p">(</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span> <span class="o">-&gt;</span> <span class="nx">acc</span><span class="p">.</span><span class="na">push</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="k">if</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">),</span> <span class="p">[]</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>But this works:</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class=rouge-code><pre><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="na">reduce</span> <span class="p">((</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">acc</span><span class="p">.</span><span class="na">push</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="k">if</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">2</span><span class="p">),</span> <span class="p">[]</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>That doesn&#39;t quite look as nice.</p> <p>But there&#39;s a second problem with the above code. Another interesting language feature is that like ruby or python, coffeescript will always return the result of the last line of code executed. This is a nice-to-have, but it can create code that is difficult to debug. What would the result of the last line of code from above be?</p> <p>Trick question, it would throw an exception, <code>TypeError: Cannot call method &#39;push&#39; of undefined</code>. CoffeeScript is a nicer syntax on top of javascript, but <em>it doesn&#39;t get rid of javascript&#39;s bad default object implementation</em>. I&#39;ve written about the quirks of javascript array functions before (<a href="/post/immutable-arrays-in-javascript">Immutable Arrays in Javascript</a>); <code>push</code> returns, not the new array, but the <em>length</em> of the new array. Because <code>reduce</code> is expecting the accumulator to be returned, it sets the acc to <code>undefined</code> if <code>x &lt; 2</code>. Oops.</p> <p>CoffeeScript, for the simplicity it brings, does by the same stroke makes it easy to write code with unintended bugs like this.</p> <p>Regardless, because it&#39;s still &quot;just javascript&quot; under the covers, it&#39;s possible to bring out the same functional nature of javascript in coffeescript.</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+</pre></td><td class=rouge-code><pre><span class="c1"># A composed function</span>
+<span class="nx">greaterThan</span> <span class="o">=</span> <span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="nx">num</span>
+
+<span class="c1"># It's also possible to write it on multiple lines, if preferred</span>
+<span class="nx">greaterThan</span> <span class="o">=</span> <span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="o">-&gt;</span>
+    <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nx">x</span> <span class="o">&gt;</span> <span class="nx">num</span>
+
+<span class="err">//</span> <span class="nx">the</span> <span class="nx">compiled</span> <span class="nx">javascript</span> <span class="nx">output</span>
+<span class="nx">var</span> <span class="nx">greaterThan</span><span class="p">;</span>
+
+<span class="nx">greaterThan</span> <span class="o">=</span> <span class="nx">function</span><span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="p">{</span>
+  <span class="k">return</span> <span class="nx">function</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="nx">num</span><span class="p">;</span>
+  <span class="p">};</span>
+<span class="p">};</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>As you can see, it certainly could make things shorter. Perhaps also making it a bit more cryptic in the process.</p> <p>In functional programming, often times functions are very short, focusing on just doing a single thing. In CoffeeScript, this literally allows functions to become a single line of code. For example, the and and or monads would simply become:</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre><span class="nx">bind</span> <span class="p">(</span><span class="nx">args</span><span class="p">...)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">args</span><span class="p">.</span><span class="na">every</span> <span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">f</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+<span class="nx">bindOr</span> <span class="p">(</span><span class="nx">args</span><span class="p">...)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">args</span><span class="p">.</span><span class="na">some</span> <span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">f</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>And our filter builder:</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class=rouge-code><pre><span class="nx">$f</span> <span class="p">(</span><span class="nx">comp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">args</span><span class="p">...)</span> <span class="o">-&gt;</span>
+    <span class="nx">f</span> <span class="o">=</span> <span class="nx">comp</span><span class="p">.</span><span class="na">apply</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">args</span><span class="p">)</span>
+
+    <span class="nx">f</span><span class="p">.</span><span class="na">and</span> <span class="o">=</span> <span class="p">(</span><span class="nx">f2</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nx">$f</span> <span class="nx">do</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="nx">bind</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">f2</span><span class="p">)</span>
+    <span class="nx">f</span><span class="p">.</span><span class="na">or</span> <span class="o">=</span> <span class="p">(</span><span class="nx">f2</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nx">$f</span> <span class="nx">do</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="nx">bindOr</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">f2</span><span class="p">)</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>So far, things are shorter, but maybe or maybe not cleaner. Here&#39;s where I think CoffeeScript could possible start to shine: consuming these libraries. Sadly, method chaining in coffeescript isn&#39;t as straight forward as it might seem.</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+28
+29
+30
+31
+32
+33
+34
+35
+36
+37
+38
+39
+40
+41
+42
+43
+44
+45
+46
+47
+48
+49
+</pre></td><td class=rouge-code><pre><span class="c1"># Attempt 1</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span>
+    <span class="nx">greaterThan</span> <span class="mi">1</span>
+    <span class="p">.</span><span class="na">and</span> <span class="nx">lessThan</span> <span class="mi">5</span>
+    <span class="p">.</span><span class="na">and</span> <span class="nx">even</span>
+    <span class="p">.</span><span class="na">or</span> <span class="nx">equals</span> <span class="mi">3</span>
+
+<span class="c1"># Result:</span>
+<span class="c1"># PARSE ERROR ON LINE 1: UNEXPECTED 'INDENT'</span>
+
+
+<span class="c1"># Attempt 2</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span>
+    <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span> <span class="nx">lessThan</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span> <span class="nx">even</span><span class="p">()</span>
+    <span class="p">.</span><span class="na">or</span> <span class="nx">equals</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+
+<span class="c1"># Result (Wrong):</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span><span class="p">(</span>
+    <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">lessThan</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span>
+        <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">even</span><span class="p">()</span>
+            <span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="nx">equals</span><span class="p">(</span><span class="mi">3</span><span class="p">)))));</span>
+
+
+<span class="c1"># Attempt 3</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span><span class="p">(</span>
+    <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">lessThan</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">even</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="nx">equals</span> <span class="mi">3</span><span class="p">)</span>
+<span class="p">)</span>
+
+<span class="c1"># Result (Almost Right):</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span><span class="p">(</span>
+    <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">lessThan</span><span class="p">(</span><span class="mi">5</span><span class="p">))</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">even</span><span class="p">)</span> <span class="o">//</span> <span class="o">&lt;&lt;</span> <span class="k">this</span> <span class="nx">should</span> <span class="nx">be</span> <span class="nx">even</span><span class="p">()</span>
+    <span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="nx">equals</span><span class="p">(</span><span class="mi">3</span><span class="p">))</span>
+<span class="p">);</span>
+
+<span class="c1"># Attempt 4</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span><span class="p">(</span>
+    <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">lessThan</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">even</span><span class="p">())</span>
+    <span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="nx">equals</span> <span class="mi">3</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>And at that point, it&#39;s so close to the javascript I&#39;m wondering if it&#39;s worth it.</p> <p>So with that, here is the whole code listing from the previous post, but in CoffeeScript. The creation of the functions are certainly much shorter. The consumption of the functions, not as much (comparison code, bottom of blog post: <a href="/post/adding-monads-to-functions-in-javascript">Adding Monads to Functions in Javascript</a>).</p> <div class=highlight><pre class="highlight coffeescript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+</pre></td><td class=rouge-code><pre><span class="c1"># Monads</span>
+<span class="nx">bind</span> <span class="p">(</span><span class="nx">args</span><span class="p">...)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">args</span><span class="p">.</span><span class="na">every</span> <span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">f</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+<span class="nx">bindOr</span> <span class="p">(</span><span class="nx">args</span><span class="p">...)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">args</span><span class="p">.</span><span class="na">some</span> <span class="p">(</span><span class="nx">f</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nx">f</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span>
+
+<span class="c1"># Filter Builder</span>
+<span class="nx">$f</span> <span class="p">(</span><span class="nx">comp</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">args</span><span class="p">...)</span> <span class="o">-&gt;</span>
+    <span class="nx">f</span> <span class="o">=</span> <span class="nx">comp</span><span class="p">.</span><span class="na">apply</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">args</span><span class="p">)</span>
+
+    <span class="nx">f</span><span class="p">.</span><span class="na">and</span> <span class="o">=</span> <span class="p">(</span><span class="nx">f2</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nx">$f</span> <span class="nx">do</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="nx">bind</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">f2</span><span class="p">)</span>
+    <span class="nx">f</span><span class="p">.</span><span class="na">or</span> <span class="o">=</span> <span class="p">(</span><span class="nx">f2</span><span class="p">)</span> <span class="o">-&gt;</span>
+        <span class="nx">$f</span> <span class="nx">do</span> <span class="p">()</span> <span class="o">-&gt;</span> <span class="nx">bindOr</span><span class="p">(</span><span class="nx">f</span><span class="p">,</span> <span class="nx">f2</span><span class="p">)</span>
+
+<span class="c1"># Filters</span>
+<span class="nx">greaterThan</span> <span class="o">=</span> <span class="nx">$f</span> <span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="nx">num</span>
+<span class="nx">lessThan</span> <span class="o">=</span> <span class="nx">$f</span> <span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="nx">x</span> <span class="o">&lt;</span> <span class="nx">num</span>
+<span class="nx">even</span> <span class="o">=</span> <span class="nx">$f</span> <span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="nx">x</span> <span class="o">%</span> <span class="mi">2</span> <span class="o">==</span> <span class="mi">0</span>
+<span class="nx">even</span> <span class="o">=</span> <span class="nx">$f</span> <span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="nx">x</span> <span class="o">==</span> <span class="nx">num</span>
+
+<span class="c1"># Consumption</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">].</span><span class="na">filter</span><span class="p">(</span>
+    <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">lessThan</span> <span class="mi">5</span><span class="p">)</span>
+    <span class="p">.</span><span class="na">and</span><span class="p">(</span><span class="nx">even</span><span class="p">())</span>
+    <span class="p">.</span><span class="na">or</span><span class="p">(</span><span class="nx">equals</span> <span class="mi">3</span><span class="p">)</span>
+<span class="p">)</span>
+</pre></td></tr></tbody></table></code></pre></div> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

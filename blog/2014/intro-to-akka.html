@@ -1,0 +1,164 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Getting Started with Akka and Testing"> <meta property="og:url" content="http://array.blue/blog/2014/intro-to-akka.html"> <meta property="article:published_time" content="2014-10-13T07:00:00Z"> <meta property="article:tag" content=scala> <meta property="article:tag" content=akka> <meta property="article:tag" content=actor> <title>[ Getting Started with Akka and Testing ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2014 blog_2014_intro-to-akka" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Getting Started with Akka and Testing</h1> <h4 class=date itemprop=dateCreated>October 13, 2014</h4> <div itemprop=articleBody> <h4>Assumptions</h4> <ol> <li> You have a working knowledge of Scala</li> <li> You don&#39;t know anything about Akka</li> <li> You know how to write and run tests</li> <li> You know how to use SBT to add dependencies to your project</li> </ol> <h3>Introduction</h3> <p>Akka is one of those libraries that seems like a party that everyone is enjoying except you. Or at least that&#39;s how I felt for a long while. Part of the reason I suspect this is so is because while Akka includes <a href="//akka.io/docs/">comprehensive online documentation</a> it&#39;s difficult to go from a description of the pieces to knowing how to apply them to building systems. This is particularly true for those who have worked with other concurrency models and come to Akka with some pre-conceived ideas about how things work.</p> <p>In truth Akka actually <em>simplifies</em> the task of building concurrent systems but has a prerequisite that you to have some key points of understanding first, and without those it&#39;s easy to get lost. As you read the following guide continually ask yourself, &quot;What is Akka doing for me, and what do I need to do?&quot; Being able to answer this question is the first step towards sucess with Akka.</p> <h3>Understand Your Part</h3> <p>The most important part of using Akka is comprehending what the developer is responsible for and what the framework is responsible for. A lot of poor architectural decisions await if this isn&#39;t well understood. Akka has many features but most don&#39;t magically appear without you doing something.</p> <p>As you&#39;re probably aware the unit of abstraction in Akka is the <em>Actor</em>. <a href="//en.wikipedia.org/wiki/Actor_model">Actors</a> aren&#39;t unique to Akka but Akka does have it&#39;s own slant on things which care should be given to learn.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">MinimumViableActor</span> <span class="k">extends</span> <span class="nc">Actor</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">receive</span> <span class="k">=</span> <span class="nc">Map</span><span class="o">.</span><span class="n">empty</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>The minimum requirement for an actor is that it implements <code>def receive: Receive</code>. <code>receive</code> is just a Scala partial function with a type signature of <code>Any =&gt; Unit</code>. You might be wondering what the <code>Map.emtpy</code> bit on the end there is -- In scala <code>Map.empty</code> will represent a partial function that does nothing. It&#39;s a bit weird, I know, but that&#39;s the syntax. Only if you want an actor that does nothing would you write that (which probably means you can throw away that knowledge right now).</p> <h3>Messages</h3> <p><code>receive</code> will be called whenever a message is sent to your actor. You can think of messages as a hybrid between an event happening in the system and a function call. Unlike pub/sub systems or the browser DOM, events aren&#39;t pushed to every actor in the system. They must be explicitly sent to an actor (more specifically to an actor <em>reference</em>, which we&#39;ll get into later). In addition to incoming messages, an actor will probably want to send outgoing messages to other actors.</p> <p>For example, if there was an actor which read from the database, an incoming message might be &quot;read this row&quot; and the actor would reply by sending back that database row after fetching it from the database.</p> <p>Let&#39;s build a simple actor which just echos whatever messages it receives.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">EchoActor</span> <span class="k">extends</span> <span class="nc">Actor</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">receive</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">case</span> <span class="n">msg</span> <span class="k">=&gt;</span> <span class="n">sender</span> <span class="o">!</span> <span class="n">msg</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>The <code>Actor</code> trait puts some methods and values in scope. <code>sender</code> comes from <code>Actor</code> and is a function (<code>def</code>) which returns the &quot;thing&quot; that sent the current message to the actor. The fact that it is a function will become relevant later.</p> <h3>Testing</h3> <p>Before we get too far into Akka, it&#39;s useful to talk about testing. A system that you can&#39;t trust and refactor isn&#39;t any fun to work on. Getting into testing early on will also let you explore how Akka is working which will make learning faster. Akka includes a library called &quot;TestKit&quot; (<a href="//doc.akka.io/docs/akka/snapshot/scala/testing.html">documentation</a>).</p> <h5>A Couple Things to Note:</h5> <ol> <li>I&#39;ll be using <a href="//etorreborre.github.io/specs2/">Specs2</a>, but the same things should work with with Scalatest or whatever other framework</li> <li>TestKit is not included by default with Akka, it must be added as an additional dependency.</li> </ol> <p>Let&#39;s write a test for our <code>EchoActor</code>. We want to assert that when our actor receives a message it echos that exact message back to the sender.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">EchoActorSpec</span> <span class="k">extends</span> <span class="nc">Specification</span> <span class="o">{</span>
+  <span class="s">"=&gt; Any"</span> <span class="n">should</span> <span class="o">{</span>
+    <span class="s">"echo message back to sender"</span> <span class="n">in</span> <span class="o">{</span>
+      <span class="o">???</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>We&#39;ve stubbed out what the test might look like. I like to describe tests which have to do with a message being sent to an actor as starting with &quot;=&gt;&quot; and describing the type of the message. This is a personal preference and is not a requirement. Right now we only have one message and it&#39;s type is <code>Any</code> so it isn&#39;t too helpful. Later when we have actors that receive many messages types it becomes a nice way to organize tests.</p> <p>Before we can write an actor test we need to mixin the bits that Akka TestKit gives us. The first thing is to change <code>Specification</code>, which is a class, to <code>SpecificationLike</code> which is a trait as TestKit requires us to inherit from a <code>TestKit</code> class.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">EchoActorSpec</span> <span class="k">extends</span> <span class="nc">TestKit</span><span class="o">(</span><span class="nc">ActorSystem</span><span class="o">(</span><span class="s">"test-system"</span><span class="o">))</span> <span class="k">with</span> <span class="nc">SpecificationLike</span>
+</pre></td></tr></tbody></table></code></pre></div> <p><code>TestKit</code> creates a new <code>ActorSystem</code> to run the tests -- that&#39;s the thing which manages all the actors. It&#39;s a good practice to shut down the system after the Spec is done running so we can add that...</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">EchoActorSpec</span> <span class="k">extends</span> <span class="nc">TestKit</span><span class="o">(</span><span class="nc">ActorSystem</span><span class="o">(</span><span class="s">"test-system"</span><span class="o">))</span> <span class="k">with</span> <span class="nc">SpecificationLike</span> <span class="o">{</span>
+  <span class="k">override</span> <span class="k">def</span> <span class="n">map</span><span class="o">(</span><span class="n">fs</span><span class="k">:</span> <span class="o">=&gt;</span><span class="nc">Fragments</span><span class="o">)</span> <span class="k">=</span> <span class="n">fs</span> <span class="o">^</span> <span class="nc">Step</span><span class="o">(</span><span class="n">shutdownTestKit</span><span class="o">)</span>
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">def</span> <span class="n">shutdownTestKit</span> <span class="k">=</span> <span class="nc">TestKit</span><span class="o">.</span><span class="n">shutdownActorSystem</span><span class="o">(</span><span class="n">system</span><span class="o">)</span>
+
+  <span class="o">...</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>I realize this syntax is a but funky bit you won&#39;t ever have to type this again (I&#39;ll show you in a second). All this does is say, &quot;after the examples have finished running, execute the step <code>shutdownTestKit</code>&quot;. While we&#39;re setting this up I have a few recommendations that will make things easier later on.</p> <p>First, when dealing with asynchronous things it&#39;s easier to debug if the specs run in the order you&#39;ve entered them. By default Specs2 runs each <code>should</code> block at random or in parallel (depending on config) but it would be easier if we ran them all in order. This can be achieved by adding <code>sequential</code> as a step.</p> <p>Second, TestKit includes a trait <code>ImplicitSender</code> which will set the sender whenever you send a message to an actor your testing. Later on this will make assertions a tad easier.</p> <p>Third, by default Specs2 includes implicit conversions for duration. Unfortunately the duration type it implicitly converts to is not the same duration type that Akka uses. This can lead to frustration later on by typing in <code>1.second</code> (been there, done that). These implicit conversions can be disabled by mixing in the trait, <code>NoTimeConversions</code>.</p> <p>So our final test boilerplate for testing an Akka actor should look like the following.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">EchoActorSpec</span> <span class="k">extends</span> <span class="nc">TestKit</span><span class="o">(</span><span class="nc">ActorSystem</span><span class="o">(</span><span class="s">"test-system"</span><span class="o">))</span>
+  <span class="k">with</span> <span class="nc">SpecificationLike</span>
+  <span class="k">with</span> <span class="nc">ImplicitSender</span>
+  <span class="k">with</span> <span class="nc">NoTimeConversions</span> <span class="o">{</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">map</span><span class="o">(</span><span class="n">fs</span><span class="k">:</span> <span class="o">=&gt;</span><span class="nc">Fragments</span><span class="o">)</span> <span class="k">=</span> <span class="n">sequential</span> <span class="o">^</span> <span class="n">fs</span> <span class="o">^</span> <span class="nc">Step</span><span class="o">(</span><span class="n">shutdownTestKit</span><span class="o">)</span>
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">def</span> <span class="n">shutdownTestKit</span> <span class="k">=</span> <span class="nc">TestKit</span><span class="o">.</span><span class="n">shutdownActorSystem</span><span class="o">(</span><span class="n">system</span><span class="o">)</span>
+
+  <span class="s">"=&gt; Any"</span> <span class="n">should</span> <span class="o">{</span>
+    <span class="s">"echo message back to sender"</span> <span class="n">in</span> <span class="o">{</span>
+      <span class="o">???</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Right. That is pretty ugly and verbose. I highly recommend making an <code>abstract class</code> somewhere else that you can inherit from for all your Akka specs.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class=rouge-code><pre><span class="c1">// src/test/scala/support/ActorSpec.scala
+</span>
+<span class="k">package</span> <span class="nn">test.support</span>
+
+<span class="k">abstract</span> <span class="k">class</span> <span class="nc">ActorSpec</span> <span class="k">extends</span> <span class="nc">TestKit</span><span class="o">(</span><span class="nc">ActorSystem</span><span class="o">(</span><span class="s">"test-system"</span><span class="o">))</span>
+  <span class="k">with</span> <span class="nc">SpecificationLike</span>
+  <span class="k">with</span> <span class="nc">ImplicitSender</span>
+  <span class="k">with</span> <span class="nc">NoTimeConversions</span> <span class="o">{</span>
+
+  <span class="k">override</span> <span class="k">def</span> <span class="n">map</span><span class="o">(</span><span class="n">fs</span><span class="k">:</span> <span class="o">=&gt;</span><span class="nc">Fragments</span><span class="o">)</span> <span class="k">=</span> <span class="n">sequential</span> <span class="o">^</span> <span class="n">fs</span> <span class="o">^</span> <span class="nc">Step</span><span class="o">(</span><span class="n">shutdownTestKit</span><span class="o">)</span>
+  <span class="k">private</span><span class="o">[</span><span class="kt">this</span><span class="o">]</span> <span class="k">def</span> <span class="n">shutdownTestKit</span> <span class="k">=</span> <span class="nc">TestKit</span><span class="o">.</span><span class="n">shutdownActorSystem</span><span class="o">(</span><span class="n">system</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This will then clean up the actual spec...</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+</pre></td><td class=rouge-code><pre><span class="k">import</span> <span class="nn">test.support.ActorSpec</span>
+
+<span class="k">class</span> <span class="nc">EchoActorSpec</span> <span class="k">extends</span> <span class="nc">ActorSpec</span> <span class="o">{</span>
+  <span class="s">"=&gt; Any"</span> <span class="n">should</span> <span class="o">{</span>
+    <span class="s">"echo message back to sender"</span> <span class="n">in</span> <span class="o">{</span>
+      <span class="o">???</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <h3>Asking</h3> <p>Now that we&#39;ve got all the setup out of the way once and for all, let&#39;s actually test the actor. If we just sent a message to our actor and it did something and that was it, we might write a test that sends the message then checks that whatever thing happened. However, we expect that not only will our actor receive messages, but also that it will reply.</p> <p>To test a response we can use a thing called <em>ask</em>. Ask has two different syntaxes but the more common one is <code>?</code>. By default ask is not in scope and must be imported with <code>import akka.pattern.ask</code>.</p> <p>Ask is easy to abuse so before you see the code for it understand this: Ask is primarily for outside code to interface with the actor system. It is not for use within your actors, specifically for them to talk to each other. It&#39;s possible to write code like that but you want to avoid doing so. Test are a perfect example of &quot;outside code&quot; that is &quot;interfacing&quot; with your actor system, so ask will make your life easier in this context.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class=rouge-code><pre><span class="k">import</span> <span class="nn">test.support.ActorSpec</span>
+<span class="k">import</span> <span class="nn">scala.concurrent.duration._</span>
+
+<span class="k">class</span> <span class="nc">EchoActorSpec</span> <span class="k">extends</span> <span class="nc">ActorSpec</span> <span class="o">{</span>
+  <span class="s">"=&gt; Any"</span> <span class="n">should</span> <span class="o">{</span>
+    <span class="s">"echo message back to sender"</span> <span class="n">in</span> <span class="o">{</span>
+      <span class="k">val</span> <span class="n">subject</span> <span class="k">=</span> <span class="nc">TestActorRef</span><span class="o">[</span><span class="kt">EchoActor</span><span class="o">]</span>
+      <span class="k">val</span> <span class="n">futureResp</span> <span class="k">=</span> <span class="o">(</span><span class="n">subject</span> <span class="o">?</span> <span class="s">"arkanoid"</span><span class="o">).</span><span class="n">mapTo</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span>
+      <span class="k">val</span> <span class="n">resp</span> <span class="k">=</span> <span class="nc">Await</span><span class="o">.</span><span class="n">resolve</span><span class="o">(</span><span class="n">futureResp</span><span class="o">,</span> <span class="mf">1.</span><span class="n">second</span><span class="o">)</span>
+      <span class="n">resp</span> <span class="n">mustEqual</span> <span class="s">"arkanoid"</span>
+    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>There are some new bits of syntax here. The <code>TestActorRef[EchoActor]</code> part tells Akka to create a new <code>EchoActor</code> and to do so specifically for testing. <code>TestActorRef</code> is a type that let&#39;s us reference an actor, giving us special access for testing that we wouldn&#39;t otherwise have in a running system. It also makes the messaging synchronous and thus easier to test.</p> <p>On the next line our first use of ask appears, <code>subject ? &quot;arkanoid&quot;</code>. Ask always returns a <code>Future[Any]</code>. It&#39;s possible to change the type through <code>mapTo</code> which is shorthand for <code>(subject ? &quot;arkanoid&quot;).map(_.asInstanceOf[String])</code>.</p> <p>There are other ways to test that messages came back. However ask is the simplest of them to use. The downside is that the future must be unwrapped. In this case I turned the asynchronous future into a synchronous wait through <code>Await</code>.</p> <p>The clever <code>1.second</code> syntax is made possible through the duration import, <code>import scala.concurrent.duration._</code>. It specifies how long the test should wait for that Future to resolve before considering it a failure. <code>Await</code> returns the value inside the Future, which in this case is our response message that the actor sent back to us.</p> <p>Personally I find the Await syntax slightly verbose. I prefer to create a helper function to simplify it a bit. Typically I stick this helper function on my <code>ActorSpec</code> class so that all actor tests can use it...</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class=rouge-code><pre><span class="k">implicit</span> <span class="k">val</span> <span class="n">timeout</span><span class="k">:</span> <span class="kt">Duration</span> <span class="o">=</span> <span class="mf">1.</span><span class="n">second</span>
+<span class="k">def</span> <span class="n">await</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">futureResp</span><span class="k">:</span> <span class="o">=&gt;</span> <span class="nc">Future</span><span class="o">[</span><span class="kt">Any</span><span class="o">])(</span><span class="k">implicit</span> <span class="n">timeout</span><span class="k">:</span> <span class="kt">Duration</span><span class="o">)</span> <span class="k">=</span>
+  <span class="nc">Await</span><span class="o">.</span><span class="n">resolve</span><span class="o">(</span><span class="n">futureResp</span><span class="o">,</span> <span class="n">timeout</span><span class="o">).</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This shortens the test syntax down to...</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="s">"echo message back to sender"</span> <span class="n">in</span> <span class="o">{</span>
+  <span class="k">val</span> <span class="n">subject</span> <span class="k">=</span> <span class="nc">TestActorRef</span><span class="o">[</span><span class="kt">EchoActor</span><span class="o">]</span>
+  <span class="k">val</span> <span class="n">resp</span> <span class="k">=</span> <span class="n">await</span><span class="o">[</span><span class="kt">String</span><span class="o">]</span> <span class="o">{</span> <span class="n">subject</span> <span class="o">?</span> <span class="s">"arkanoid"</span> <span class="o">}</span>
+  <span class="n">resp</span> <span class="n">mustEqual</span> <span class="s">"arkanoid"</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

@@ -1,0 +1,48 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Abstract Types in Scala"> <meta property="og:url" content="http://array.blue/blog/2010/abstract-types-in-scala.html"> <meta property="article:published_time" content="2010-05-29T07:00:00Z"> <meta property="article:tag" content=scala> <title>[ Abstract Types in Scala ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2010 blog_2010_abstract-types-in-scala" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Abstract Types in Scala</h1> <h4 class=date itemprop=dateCreated>May 29, 2010</h4> <div itemprop=articleBody> <p>Whenever I learn new programming languages, there is invariably features of the language that will surprise me. One of those in Scala (one of many actually) is abstract types. When I first read the textual description of an abstract type, I wondered what use it would ever entail. However, the authors of <a href="//programming-scala.labs.oreilly.com/">Programming Scala</a> gave a very clear example of proper use.</p> <p>This code snippet comes from Chapter 2 of the book.</p> <p>Starting with an abstract class, we can declare an abstract type. In this case, type <code>In</code> on our class <code>BulkReader</code> is abstract. It’s there, but it does not have a concrete type associated with it. Yet, our value <code>Source</code> is typed as type <code>In</code>. How can this be?</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="k">abstract</span> <span class="k">class</span> <span class="nc">BulkReader</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">In</span>
+  <span class="k">val</span> <span class="n">source</span><span class="k">:</span> <span class="kt">In</span>
+  <span class="k">def</span> <span class="n">read</span><span class="k">:</span> <span class="kt">String</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>The magic comes when we declare a concrete version of <code>BulkReader</code> and can assign a concrete type to “In”:</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">StringBulkReader</span><span class="o">(</span><span class="k">val</span> <span class="n">source</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">BulkReader</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">In</span> <span class="o">=</span> <span class="nc">String</span>
+  <span class="k">def</span> <span class="n">read</span> <span class="k">=</span> <span class="n">source</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">FileBulkReader</span><span class="o">(</span><span class="k">val</span> <span class="n">source</span><span class="k">:</span> <span class="kt">File</span><span class="o">)</span> <span class="k">extends</span> <span class="nc">BulkReader</span> <span class="o">{</span>
+  <span class="k">type</span> <span class="kt">In</span> <span class="o">=</span> <span class="nc">File</span>
+  <span class="k">def</span> <span class="n">read</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="k">val</span> <span class="n">in</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">BufferedInputStream</span><span class="o">(</span><span class="k">new</span> <span class="nc">FileInputStream</span><span class="o">(</span><span class="n">source</span><span class="o">))</span>
+    <span class="k">val</span> <span class="n">numBytes</span> <span class="k">=</span> <span class="n">in</span><span class="o">.</span><span class="n">available</span><span class="o">()</span>
+    <span class="k">val</span> <span class="n">bytes</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Array</span><span class="o">[</span><span class="kt">Byte</span><span class="o">](</span><span class="n">numBytes</span><span class="o">)</span>
+    <span class="n">in</span><span class="o">.</span><span class="n">read</span><span class="o">(</span><span class="n">bytes</span><span class="o">,</span> <span class="mi">0</span><span class="o">,</span> <span class="n">numBytes</span><span class="o">)</span>
+    <span class="k">new</span> <span class="nc">String</span><span class="o">(</span><span class="n">bytes</span><span class="o">)</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Very cool! In our two concrete instances of <code>BulkReader</code> we assigned two different types to our abstract type <code>In</code>. Note that the value typed as <code>In</code>, “source” is actually part of the concrete class’s constructor which is, at this point for me, completely mind bending in terms of flexibility towards class design.</p> <p>I have a feeling it will take me some time to get used to this notion and power before I really start to design code that makes use of it.</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

@@ -1,0 +1,62 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Structure and Interpretation, LISP, and Python"> <meta property="og:url" content="http://array.blue/blog/2009/structure-and-interpretation-lisp-and-python.html"> <meta property="article:published_time" content="2009-10-29T07:00:00Z"> <meta property="article:tag" content=python> <meta property="article:tag" content=lisp> <title>[ Structure and Interpretation, LISP, and Python ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2009 blog_2009_structure-and-interpretation-lisp-and-python" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Structure and Interpretation, LISP, and Python</h1> <h4 class=date itemprop=dateCreated>October 29, 2009</h4> <div itemprop=articleBody> <p>I’m a “city boy” when it comes to programming languages. 90% of my experience in programming is in ridiculously high level languages like VB.NET, C#, and Python. I haven’t “roughed it out” much in the wilderness of some low level language.</p> <p>I had heard talk about MIT’s Open Courseware, but wasn’t sure what the hoopla was all about. Based on a reference in <a href="//www.joelonsoftware.com/articles/ThePerilsofJavaSchools.html">someone’s blog post</a>, I happened upon a 1986 recording of <a href="//www.youtube.com/watch?v=2Op3QLzMgSY">Structure and Interpretation of Computer Programs (YouTube)</a>. I watched the whole thing. I am thoroughly blown away.</p> <p>I’ll admit, the first 20 minutes were dizzyingly abstract, but once some code samples started to show up, it began to make sense. What I was floored the most about was seeing how much an influence LISP had over the language I’ve been working in the most lately — Python. All of the “funky things” that I wasn’t used too from C#, inner methods, using “def” instead of “function”, etc. etc. were all elements of LISP.</p> <p>So having <a href="//www.codinghorror.com/blog/archives/000781.html">FizzBuzz</a> on the mind, I decided to give it a shot…. in LISP (and then after recursively in Python). The course professor noted that LISP had no for loops. “A challenge” I thought to myself. (Long Side Tangent: I feel at the moment as if I’m creating a programmer’s Fight Club where I mentally abuse the comfortable high-level language life I once knew to get down and dirty fighting with the bare essentials of computational logic. [end sensationalistic, metaphoric movie reference])</p> <p>In case you’re not familiar with FizzBuzz, here’s the problem:</p> <blockquote> <p>Write a program that prints the numbers from 1 to 100. But for multiples of three print “Fizz” instead of the number and for the multiples of five print “Buzz”. For numbers which are multiples of both three and five print “FizzBuzz”.</p> </blockquote> <p>I “made up” a function definition for print since the details of printing to the screen weren’t really my concern.</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+</pre></td><td class=rouge-code><pre>(define (fizzbuzz start end) (
+  (define (print x) ( ..something.. ))
+  (cond
+    (= (mod start 15) 0) (print "fizzbuzz"))
+    (= (mod start 3) 0) (print "fizz"))
+    (= (mod start 5) 0) (print "buzz"))
+    ((print start))
+  )
+  (cond
+    ((&lt; start end) ((fizzbuzz (+ 1 start) end)))
+  )
+))
+(fizzbuzz 1 100)
+</pre></td></tr></tbody></table></code></pre></div> <p>The odd part for me was after working through the mental process of how the solution would work recursively in LISP, writing it again in Python felt ridiculously easy…</p> <div class=highlight><pre class="highlight python"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre></td><td class=rouge-code><pre><span class="k">def</span> <span class="nf">fizzbuzz</span> <span class="p">(</span><span class="n">start</span><span class="p">,</span> <span class="n">end</span><span class="p">):</span>
+  <span class="k">if</span> <span class="n">start</span> <span class="o">%</span> <span class="mi">15</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">'fizzbuzz'</span>
+  <span class="k">elif</span> <span class="n">start</span> <span class="o">%</span> <span class="mi">3</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">'fizz'</span>
+  <span class="k">elif</span> <span class="n">start</span> <span class="o">%</span> <span class="mi">5</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+    <span class="k">print</span> <span class="s">'buzz'</span>
+  <span class="k">else</span><span class="p">:</span>
+    <span class="k">print</span> <span class="n">start</span>
+
+  <span class="k">if</span> <span class="n">start</span> <span class="o">&lt;</span> <span class="n">end</span><span class="p">:</span>
+    <span class="n">fizzbuzz</span><span class="p">(</span><span class="n">start</span><span class="o">+</span><span class="mi">1</span><span class="p">,</span> <span class="n">end</span><span class="p">)</span>
+
+<span class="n">fizzbuzz</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">100</span><span class="p">)</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Look mom, no loops!</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

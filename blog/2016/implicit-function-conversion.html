@@ -1,0 +1,42 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Implicit Function Conversion"> <meta property="og:url" content="http://array.blue/blog/2016/implicit-function-conversion.html"> <meta property="article:published_time" content="2016-05-10T07:00:00Z"> <meta property="article:tag" content=scala> <meta property="article:tag" content=implicits> <title>[ Implicit Function Conversion ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2016 blog_2016_implicit-function-conversion" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Implicit Function Conversion</h1> <h4 class=date itemprop=dateCreated>May 10, 2016</h4> <div itemprop=articleBody> <p>Most Scala developers are familiar with implicit type conversion which grants the Scala compiler the ability to automatically convert any type <code>A</code> to <code>B</code> at compilation time.</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class=rouge-code><pre>case class Person(name: String, age: Int)
+
+implicit def personToInt(p: Person): Int = p.age
+
+def increment(i: Int) = i + 1
+
+val john = Person("John", 23)
+val johnsAgeNextYear = increment(john)
+</pre></td></tr></tbody></table></code></pre></div> <p>One area where this abstraction leaks is when applying a function. The following is NOT possible solely by the <code>implicit def</code>:</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre>val people: Seq[Person] = Seq(Person("John", 23), Person("Sally", 38))
+val agesNextyear = people.map(increment)
+</pre></td></tr></tbody></table></code></pre></div> <p>At first glance this seems like a short coming. Scala knows how to implicitly convert from <code>Person =&gt; Int</code>. <code>val people</code> is a <code>Seq[Person]</code>, therefore it should be possible to map that collection to a <code>Seq[Int]</code>.</p> <p>The problem, however, isn&#39;t that Scala doesn&#39;t know how to do <code>Person =&gt; Int</code>. Instead it is that <code>map</code> is expecting a function of type signature <code>Person =&gt; B</code> and <code>increment</code> is actually <code>Int =&gt; B</code>.</p> <p>It turns out this can be resolved by defining a second implicit conversion:</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre>implicit def intFunc1ToPersonFunc1[R](f: Int =&gt; R): Person =&gt; R =
+  (p: Person) =&gt; f(p.age)
+</pre></td></tr></tbody></table></code></pre></div> <p>Scala now has two implicit functions, one to <code>Person =&gt; Int</code> and a second to <code>(Person =&gt; B) =&gt; (Int =&gt; B)</code>. It&#39;s now possible to apply <code>increment</code> when mapping a <code>Seq[Person]</code> because Scala will implicit convert <code>increment</code> to a function that takes a <code>Person</code> and returns their age plus one.</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class=rouge-code><pre>val agesNextyear = people.map(increment)
+</pre></td></tr></tbody></table></code></pre></div> <p>There&#39;s a bit of a problem with the <code>def intFunc1ToPersonFunc1</code> however: it repeats the same logic of conversion that is already in the <code>implicit def personToInt</code>. It would be better to describe that conversion once, and use it wherever needed.</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre>implicit def intFunc1ToPersonFunc1[R](f: Int =&gt; R)(implicit convert: Person =&gt; Int): Person =&gt; R =
+  (p: Person) =&gt; f(convert(p))
+</pre></td></tr></tbody></table></code></pre></div> <p>Now any conversion from <code>Person =&gt; Int</code> can be used, as long as it is in scope.</p> <p>In fact, this approach could be used to generically allow <em>any</em> implicit function conversion for all types that have an implicit conversion defined for them.</p> <div class=highlight><pre class="highlight plaintext"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre>implicit def aFuncToBFunc[A,B,R](f: A =&gt; R)(implicit convert: B =&gt; A): B =&gt; R =
+  f.compose(convert)
+</pre></td></tr></tbody></table></code></pre></div> <p>SIDEBAR: <code>(b: B) =&gt; f(convert(b))</code> is the same thing as <code>f.compose(convert)</code></p> <p>Global implicit type conversions that work on all types can sometimes cause unpredictable bugs. Be careful how this is used.</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

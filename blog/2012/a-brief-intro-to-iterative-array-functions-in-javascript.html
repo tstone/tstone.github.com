@@ -1,0 +1,282 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="A Brief Intro to Iterative Array Functions in Javascript"> <meta property="og:url" content="http://array.blue/blog/2012/a-brief-intro-to-iterative-array-functions-in-javascript.html"> <meta property="article:published_time" content="2012-09-14T07:00:00Z"> <meta property="article:tag" content=javascript> <meta property="article:tag" content=arrays> <title>[ A Brief Intro to Iterative Array Functions in Javascript ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2012 blog_2012_a-brief-intro-to-iterative-array-functions-in-javascript" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>A Brief Intro to Iterative Array Functions in Javascript</h1> <h4 class=date itemprop=dateCreated>September 14, 2012</h4> <div itemprop=articleBody> <p>ECMAScript 5 (javascript 1.6) introduces a number of new iteration methods to the Array object -- <a href="https://developer.mozilla.org/en-US/docs/JavaScript/Reference/Global_Objects/Array">Reference @ MDN</a>. While it&#39;s possible to claim that these simply add syntatic sugar to the language, their brevity makes it possible to express a lot of processing in very few lines of code.</p> <h3>ForEach, Map, and Reduce</h3> <p>jQuery users will likely be familiar with <code>forEach</code>. ForEach is an instance method, called on an array, in which the first argument (a callback function), is executed one time for each object that is within the array.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class=rouge-code><pre><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="nx">forEach</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span> <span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="s2">"1"</span>
+<span class="s2">"2"</span>
+<span class="s2">"3"</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>There are a few differences between <code>Array#forEach</code> and <code>$.each</code>. The biggest difference is the order of arguments in the callback. <code>jQuery.each</code> gives the index first and the item second. <code>forEach</code> gives the item first and the index second (in other words, it&#39;s the correct way.)</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="p">[</span><span class="s1">'tim'</span><span class="p">,</span> <span class="s1">'john'</span><span class="p">];</span>
+
+<span class="nx">a</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">,</span> <span class="nx">i</span><span class="p">){</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span> <span class="p">});</span>
+<span class="nx">$</span><span class="p">.</span><span class="nx">each</span><span class="p">(</span><span class="nx">a</span><span class="p">,</span> <span class="kd">function</span><span class="p">(</span><span class="nx">i</span><span class="p">,</span> <span class="nx">x</span><span class="p">){</span> <span class="nx">console</span><span class="p">.</span><span class="nx">log</span><span class="p">(</span><span class="nx">i</span><span class="p">);</span> <span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="s2">"1"</span>
+<span class="s2">"2"</span>
+<span class="s2">"1"</span>
+<span class="s2">"2"</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>ForEach is simply about executing code. <code>Map</code> introduces the idea of a return. As with <code>forEach</code>, the callback function is executed once for every element in the array, however that function returns a value which creates a new array.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+
+<span class="c1">// These are equivalents:</span>
+
+<span class="kd">var</span> <span class="nx">b</span> <span class="o">=</span> <span class="nx">a</span><span class="p">.</span><span class="nx">map</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">+</span> <span class="mi">1</span><span class="p">;</span> <span class="p">});</span>
+
+<span class="kd">var</span> <span class="nx">c</span> <span class="o">=</span> <span class="p">[];</span>
+<span class="nx">a</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="nx">c</span><span class="p">.</span><span class="nx">push</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span> <span class="p">});</span>
+
+<span class="c1">// Both b &amp; c are:</span>
+<span class="c1">// [2, 3, 4]</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Like <code>map</code>, <code>reduce</code> returns a value which is the &quot;accumulated&quot; value of the array. Each time the callback function is called, it&#39;s passed the accumulator and the item. The callback function returns whatever accumulation processing needs to happen, and the result of the <code>reduce</code> is the accumulated value. That sounds weird, but consider the following code.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+
+<span class="c1">// These are equivalents:</span>
+
+<span class="kd">var</span> <span class="nx">b</span> <span class="o">=</span> <span class="nx">a</span><span class="p">.</span><span class="nx">reduce</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">acc</span> <span class="o">+</span> <span class="nx">x</span><span class="p">;</span> <span class="p">},</span> <span class="mi">0</span><span class="p">);</span>
+
+<span class="kd">var</span> <span class="nx">c</span> <span class="o">=</span> <span class="mi">0</span><span class="p">;</span>
+<span class="nx">a</span><span class="p">.</span><span class="nx">forEach</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="nx">c</span> <span class="o">+=</span> <span class="nx">x</span><span class="p">;</span> <span class="p">});</span>
+
+<span class="c1">// Both b &amp; c are:</span>
+<span class="c1">// 6</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Note that <code>reduce</code> takes a second parameter, the initial value of the accumulator. It&#39;s possible to leave this off and the <code>acc</code> will start with <code>undefined</code>. It could be written like this in that case. But writing it this way is less efficient and looks uglier.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">b</span> <span class="o">=</span> <span class="nx">a</span><span class="p">.</span><span class="nx">reduce</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="p">(</span><span class="nx">acc</span> <span class="o">||</span> <span class="mi">0</span><span class="p">)</span> <span class="o">+</span> <span class="nx">x</span><span class="p">;</span> <span class="p">});</span>
+</pre></td></tr></tbody></table></code></pre></div> <h4>In Use</h4> <p>In practice, <code>map</code> and <code>reduce</code> allow things to be done very easily. Say perhaps that we have a DOM element, and we want one of the children to full the remianing height that isn&#39;t already taken by the other children.</p> <div class=highlight><pre class="highlight html"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class=rouge-code><pre><span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">"parent"</span> <span class="na">style=</span><span class="s">"height: 500px"</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;h2</span> <span class="na">style=</span><span class="s">"height: 50px;"</span><span class="nt">&gt;</span>Title<span class="nt">&lt;/h2&gt;</span>
+    <span class="nt">&lt;div</span> <span class="na">id=</span><span class="s">"content"</span><span class="nt">&gt;</span>
+        <span class="c">&lt;!-- ... --&gt;</span>
+    <span class="nt">&lt;/div&gt;</span>
+    <span class="nt">&lt;img</span> <span class="na">style=</span><span class="s">"height: 100px"</span> <span class="na">src=</span><span class="s">"..."</span> <span class="nt">/&gt;</span>
+<span class="nt">&lt;/div&gt;</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>In effect, we want <code>div#content</code> to have a height of 350px. We could calculate this by first getting the height of the parent, then substracting the height of all of the children with the exception of <code>div#content</code>.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">parent</span> <span class="o">=</span> <span class="nx">$</span><span class="p">(</span><span class="s1">'#parent'</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">contentHeight</span> <span class="o">=</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">outerHeight</span><span class="p">()</span> <span class="o">-</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">children</span><span class="p">().</span><span class="nx">not</span><span class="p">(</span><span class="s1">'#content'</span><span class="p">).</span><span class="nx">toArray</span><span class="p">().</span><span class="nx">reduce</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span>
+    <span class="k">return</span> <span class="nx">$</span><span class="p">(</span><span class="nx">x</span><span class="p">).</span><span class="nx">outerHeight</span><span class="p">();</span>
+<span class="p">});</span>
+<span class="nx">$</span><span class="p">(</span><span class="s1">'#content'</span><span class="p">).</span><span class="nx">css</span><span class="p">(</span><span class="s1">'height'</span><span class="p">,</span> <span class="nx">contentHeight</span><span class="o">+</span><span class="s1">'px'</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>In this case, we selected all of the children within <code>parent</code> that wasn&#39;t the element we wanted to set the height on (<code>parent.children().not(&#39;#content&#39;)</code>). Because that would return a jQuery function, it was turned into an array (<code>.toArray()</code>). Then, that array of elements was <code>reduce</code>&#39;ed, where each element returned it&#39;s <code>outerHeight</code>. The result of reduce was the area that <code>div#content</code> wasn&#39;t occupying, so we could calculate the correct height by simply subtracting that from the parent&#39;s height.</p> <h3>Every and Some</h3> <p>On the flip side, sometimes it&#39;s more important to confirm the contents of an array rather than creating new values based on the array. In those cases there is <code>every</code> and <code>some</code>.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+
+<span class="nx">a</span><span class="p">.</span><span class="nx">every</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// true</span>
+
+<span class="nx">a</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// true</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Every and some are a bit like reduce, where the logical operator <code>&amp;&amp;</code> is applied to the accumulator for <code>every</code> and <code>||</code> for <code>some</code>.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">a</span> <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">];</span>
+
+<span class="c1">// These are equivalents:</span>
+
+<span class="nx">a</span><span class="p">.</span><span class="nx">every</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">0</span><span class="p">;</span> <span class="p">});</span>
+<span class="nx">a</span><span class="p">.</span><span class="nx">reduce</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">0</span> <span class="o">&amp;&amp;</span> <span class="nx">acc</span><span class="p">;</span> <span class="p">},</span> <span class="kc">true</span><span class="p">);</span>
+
+<span class="c1">// These are also equivalents:</span>
+
+<span class="nx">a</span><span class="p">.</span><span class="nx">some</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="p">});</span>
+<span class="nx">a</span><span class="p">.</span><span class="nx">reduce</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">acc</span><span class="p">,</span> <span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">2</span> <span class="o">||</span> <span class="nx">acc</span><span class="p">;</span> <span class="p">},</span> <span class="kc">false</span><span class="p">);</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Clearly, however, <code>every</code> and <code>some</code> are much easier to read and write. They&#39;re a little bit less useful however because the need for them just doesn&#39;t come up as often as <code>map</code> and <code>reduce</code>.</p> <h3>Filter</h3> <p>Last, but not least, is <code>fitler</code> which is a bit like <code>map</code> but more useful in a certain case. Consider the following:</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+</pre></td><td class=rouge-code><pre><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="nx">map</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span>
+    <span class="k">if</span> <span class="p">(</span><span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">x</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// [undefined, 2, 3]</span>
+</pre></td></tr></tbody></table></code></pre></div> <p><code>undefined</code>!? Recall that <code>map</code> builds a new array out of the return of the function that is applied for each array element. That means that if <code>x &gt; 1</code> evaluates to <code>false</code>, the callback function returns <code>undefined</code>. This is the case where <code>filter</code> is the right choice.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class=rouge-code><pre><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">].</span><span class="nx">filter</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">1</span><span class="p">;</span> <span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// [2, 3]</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Filter is more limited than <code>map</code>, in that the value can&#39;t be changed, however it won&#39;t add <code>undefined</code> to the new array in cases where we don&#39;t want to keep the value.</p> <p>Filter and map can be chained together as well.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+</pre></td><td class=rouge-code><pre><span class="c1">// Double values where the value is greater than 3</span>
+
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">].</span><span class="nx">filter</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">;</span> <span class="p">}).</span><span class="nx">map</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">*</span> <span class="mi">2</span> <span class="p">});</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// [8]</span>
+</pre></td></tr></tbody></table></code></pre></div> <h3>Improving Readability</h3> <p>That last line of code was a bit hard to read.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class=rouge-code><pre><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">].</span><span class="nx">filter</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">;</span> <span class="p">}).</span><span class="nx">map</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">*</span> <span class="mi">2</span> <span class="p">});</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Javascript, having functional roots, gives us some tools for addressing the readability of that code. Functional composition is a crazy, mathy concept, but on a simple level the idea isn&#39;t that hard: Can we have a function that creates a function where the function that was created is shaped somehow by the parent function?</p> <p>In object oriented programming, code describes classes and creates new instances of objects, so why not have code that creates functions for reuse too? What&#39;s furhter is that javascript&#39;s supports of closures mean that we could craft a function where the arguments of the outer function are closure&#39;ed into the returned function. All that crazy talk sounds hard, but consider the following code:</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">greaterThan</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="nx">num</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p><code>greaterThan</code> is a function... that returns a function (let that sink in). The returned function takes one argument, <code>x</code>, which it compares to... <code>num</code>. Num is present because it was closure&#39;ed by the scope of the outer function. If we were to execute <code>greaterThan</code> we&#39;d get a function back, which we could pass <code>x</code> into.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">greaterThanEight</span> <span class="o">=</span> <span class="nx">greaterThan</span><span class="p">(</span><span class="mi">8</span><span class="p">);</span>
+<span class="kd">var</span> <span class="nx">greaterThanEight</span><span class="p">(</span><span class="mi">10</span><span class="p">);</span>
+
+<span class="c1">// Output:</span>
+<span class="c1">// true</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Using functional composition, we could build up a generic set of functions to create functions for filtering and mapping and such.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">greaterThan</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="nx">num</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">multiply</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">num</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="k">return</span> <span class="nx">x</span> <span class="o">*</span> <span class="nx">num</span><span class="p">;</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="c1">// These are equivalent:</span>
+
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">].</span><span class="nx">filter</span><span class="p">(</span><span class="nx">greaterThan</span><span class="p">(</span><span class="mi">3</span><span class="p">)).</span><span class="nx">map</span><span class="p">(</span><span class="nx">multiply</span><span class="p">(</span><span class="mi">2</span><span class="p">));</span>
+<span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">].</span><span class="nx">filter</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">&gt;</span> <span class="mi">3</span><span class="p">;</span> <span class="p">}).</span><span class="nx">map</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span> <span class="k">return</span> <span class="nx">x</span> <span class="o">*</span> <span class="mi">2</span> <span class="p">});</span>
+
+<span class="c1">// But the composed functions can also be re-used...</span>
+
+<span class="p">[</span><span class="mi">100</span><span class="p">,</span> <span class="mi">200</span><span class="p">,</span> <span class="mi">300</span><span class="p">,</span> <span class="mi">400</span><span class="p">].</span><span class="nx">filter</span><span class="p">(</span><span class="nx">greaterThan</span><span class="p">(</span><span class="mi">250</span><span class="p">)).</span><span class="nx">map</span><span class="p">(</span><span class="nx">multiply</span><span class="p">(</span><span class="mf">1.5</span><span class="p">));</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This practice can result in some extremely flexible code. Once the composing functions get setup, it&#39;s really simple to create new functions and use them. Recall this snippet from above:</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">contentHeight</span> <span class="o">=</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">outerHeight</span><span class="p">()</span> <span class="o">-</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">children</span><span class="p">().</span><span class="nx">not</span><span class="p">(</span><span class="s1">'#content'</span><span class="p">).</span><span class="nx">toArray</span><span class="p">().</span><span class="nx">reduce</span><span class="p">(</span><span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">){</span>
+    <span class="k">return</span> <span class="nx">$</span><span class="p">(</span><span class="nx">x</span><span class="p">).</span><span class="nx">outerHeight</span><span class="p">();</span>
+<span class="p">});</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>A function could be created to return the property or singleton method of a jQuery object.</p> <div class=highlight><pre class="highlight javascript"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class=rouge-code><pre><span class="kd">var</span> <span class="nx">prop</span> <span class="o">=</span> <span class="kd">function</span><span class="p">(</span><span class="nx">p</span><span class="p">)</span> <span class="p">{</span>
+    <span class="k">return</span> <span class="kd">function</span><span class="p">(</span><span class="nx">x</span><span class="p">)</span> <span class="p">{</span>
+        <span class="nx">x</span> <span class="o">=</span> <span class="nx">$</span><span class="p">(</span><span class="nx">x</span><span class="p">);</span>
+        <span class="k">if</span> <span class="p">(</span><span class="k">typeof</span> <span class="nx">x</span><span class="p">[</span><span class="nx">p</span><span class="p">]</span> <span class="o">===</span> <span class="s1">'function'</span><span class="p">)</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">x</span><span class="p">[</span><span class="nx">p</span><span class="p">]();</span>
+        <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
+            <span class="k">return</span> <span class="nx">x</span><span class="p">[</span><span class="nx">p</span><span class="p">];</span>
+        <span class="p">}</span>
+    <span class="p">}</span>
+<span class="p">}</span>
+
+<span class="kd">var</span> <span class="nx">contentHeight</span> <span class="o">=</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">outerHeight</span><span class="p">()</span> <span class="o">-</span> <span class="nx">parent</span><span class="p">.</span><span class="nx">children</span><span class="p">().</span><span class="nx">not</span><span class="p">(</span><span class="s1">'#content'</span><span class="p">).</span><span class="nx">toArray</span><span class="p">().</span><span class="nx">reduce</span><span class="p">(</span><span class="nx">prop</span><span class="p">(</span><span class="s1">'outerHeight'</span><span class="p">));</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This one is a bit more complex. Instead of just returning <code>x[p]</code> which would be <code>p</code> as a property of <code>x</code>, we check first if <code>p</code> is a function and execute it if so returning the result of <code>x[p]</code> instead of the value of <code>x[p]</code>.</p> <p>Lots and lots of cool stuff can be done using these practices and built-in array methods.</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

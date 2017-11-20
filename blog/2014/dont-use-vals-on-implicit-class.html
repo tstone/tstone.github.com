@@ -1,0 +1,44 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Avoid 'val's on Implicit Classes"> <meta property="og:url" content="http://array.blue/blog/2014/dont-use-vals-on-implicit-class.html"> <meta property="article:published_time" content="2014-06-06T07:00:00Z"> <meta property="article:tag" content=scala> <meta property="article:tag" content=implicits> <title>[ Avoid 'val's on Implicit Classes ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2014 blog_2014_dont-use-vals-on-implicit-class" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Avoid 'val's on Implicit Classes</h1> <h4 class=date itemprop=dateCreated>June 6, 2014</h4> <div itemprop=articleBody> <p>Implicit classes (known early on in the community as the &quot;pimp my library&quot; pattern) are used to extend classes with additional methods or values within a given context. As a rule, having a <code>val</code> on an implicit class is less than spectactular. Scala expands each use of the implicit at the time it is applied. This means that for each time an implicit method is accessed, a <code>new</code> instance of the implicit class is created. Since <code>val</code>&#39;s are evaluated at class creation time, this basically means the compute every single time an implicit class is created.</p> <p>Similarly, <code>lazy val</code> doesn&#39;t offer any additional value because a new instance of the class is being created, which means the memoizing effect of lazy val will never be utilized.</p> <p>The best choice for an implicit class is probably <code>def</code>. If values will be used multiple times, it&#39;s probably better to just explicitly instantiate the class yourself and keep that copy around.</p> <p>This can be demonstrated easily in the Scala console:</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+</pre></td><td class=rouge-code><pre><span class="k">implicit</span> <span class="k">class</span> <span class="nc">StringOps</span><span class="o">(</span><span class="n">s</span><span class="k">:</span> <span class="kt">String</span><span class="o">)</span> <span class="o">{</span>
+
+  <span class="k">val</span> <span class="n">one</span> <span class="k">=</span> <span class="o">{</span> <span class="n">println</span><span class="o">(</span><span class="s">"one"</span><span class="o">);</span> <span class="s">"one"</span> <span class="o">}</span>
+  <span class="k">val</span> <span class="n">two</span> <span class="k">=</span> <span class="o">{</span> <span class="n">println</span><span class="o">(</span><span class="s">"two"</span><span class="o">);</span> <span class="s">"two"</span> <span class="o">}</span>
+  <span class="k">lazy</span> <span class="k">val</span> <span class="n">three</span> <span class="k">=</span> <span class="o">{</span> <span class="n">println</span><span class="o">(</span><span class="s">"three"</span><span class="o">);</span> <span class="s">"value"</span> <span class="o">}</span>
+
+<span class="o">}</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="s">"asdf"</span><span class="o">.</span><span class="n">three</span>
+<span class="n">one</span>
+<span class="n">two</span>
+<span class="n">three</span>
+<span class="n">res1</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">value</span>
+
+<span class="n">scala</span><span class="o">&gt;</span> <span class="s">"asdf"</span><span class="o">.</span><span class="n">two</span>
+<span class="n">one</span>
+<span class="n">two</span>
+<span class="n">res2</span><span class="k">:</span> <span class="kt">String</span> <span class="o">=</span> <span class="n">two</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Notice how the <code>.one</code> method is never called but computes every single time?</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

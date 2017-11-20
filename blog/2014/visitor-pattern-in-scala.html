@@ -1,0 +1,110 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Visitor Pattern Revisited in Scala"> <meta property="og:url" content="http://array.blue/blog/2014/visitor-pattern-in-scala.html"> <meta property="article:published_time" content="2014-09-30T07:00:00Z"> <meta property="article:tag" content=scala> <meta property="article:tag" content=patterns> <meta property="article:tag" content=implicits> <title>[ Visitor Pattern Revisited in Scala ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2014 blog_2014_visitor-pattern-in-scala" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Visitor Pattern Revisited in Scala</h1> <h4 class=date itemprop=dateCreated>September 30, 2014</h4> <div itemprop=articleBody> <p>The &quot;visitor pattern&quot; is one of those design patterns when reading in the abstract is hard to follow. Before we look at how it might be useful in Scala, let&#39;s first look at what the original pattern was and what problem it was trying to solve.</p> <p>What if you have a handful of classes that share some common ancestry. There must be behavior on all of them to do something but what if that behavior is outside the scope of the class? This would be true when the behavior is extremely specific to one use case and thus would just pollute the class&#39;s implementation.</p> <h4>Scenario</h4> <p>Say you&#39;re writing a media player. Most people want the basics: play, pause, skip song, playlist. However you also want to have a plugin that allows DJ&#39;s to calculate the BPM of a song. We don&#39;t want to clutter up the main player with behavior (BPM determination) that isn&#39;t core to the product.</p> <p>What is a way this problem could be solved? As you probably guessed from the title and introduction the visitor pattern is one such approach.</p> <h2>Vanilla Visitor</h2> <p>We start by defining a visitor. A visitor exposes one <code>visit</code> method for every type the visitor will be used on. This means that fundamentally the visitor pattern is based on <a href="//en.wikipedia.org/wiki/Function_overloading">method overloading</a>. In our simple case let&#39;s assume we have an <code>Audio</code> and a <code>Video</code> class which both extend <code>trait Media</code>.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class=rouge-code><pre><span class="k">trait</span> <span class="nc">MediaVisitor</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">visit</span><span class="o">(</span><span class="n">audio</span><span class="k">:</span> <span class="kt">Audio</span><span class="o">)</span><span class="k">:</span> <span class="kt">Any</span>
+  <span class="k">def</span> <span class="n">visit</span><span class="o">(</span><span class="n">video</span><span class="k">:</span> <span class="kt">Video</span><span class="o">)</span><span class="k">:</span> <span class="kt">Any</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Ignore the <code>Any</code> return type. We&#39;ll come back to that in a second. Next, every class in implements an <code>accept</code> method that takes a visitor as it&#39;s argument.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">Audio</span> <span class="k">extends</span> <span class="nc">Media</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">accept</span><span class="o">(</span><span class="n">visitor</span><span class="k">:</span> <span class="kt">MediaVisitor</span><span class="o">)</span> <span class="k">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">visit</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">Video</span> <span class="k">extends</span> <span class="nc">Media</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">accept</span><span class="o">(</span><span class="n">visitor</span><span class="k">:</span> <span class="kt">MediaVisitor</span><span class="o">)</span> <span class="k">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">visit</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>At this point any behavior we wanted to implement needs to implement the <code>MediaVisitor</code> method. Keeping with our scenario, we could have a BPM visitor.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+</pre></td><td class=rouge-code><pre><span class="k">object</span> <span class="nc">BPMCalculator</span> <span class="k">extends</span> <span class="nc">MediaVisitor</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">visit</span><span class="o">(</span><span class="n">audio</span><span class="k">:</span> <span class="kt">Audio</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="c1">// ... do some magic to determine BPM from audio stream ...
+</span>  <span class="o">}</span>
+
+  <span class="k">def</span> <span class="n">visit</span><span class="o">(</span><span class="n">video</span><span class="k">:</span> <span class="kt">Video</span><span class="o">)</span> <span class="k">=</span> <span class="o">{</span>
+    <span class="c1">// ... extract audio stream
+</span>    <span class="c1">// ... do some magic to determine BPM from audio stream ...
+</span>  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>To find the BPM of a song we could then pass <code>BPMCalculator</code> to an instance of either <code>Audio</code> or <code>Video</code>.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre><span class="k">val</span> <span class="n">song</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Song</span>
+<span class="k">val</span> <span class="n">bpm</span> <span class="k">=</span> <span class="n">song</span><span class="o">.</span><span class="n">accept</span><span class="o">(</span><span class="nc">BPMCalculator</span><span class="o">).</span><span class="n">asInstanceOf</span><span class="o">[</span><span class="kt">Int</span><span class="o">]</span>
+</pre></td></tr></tbody></table></code></pre></div> <h2>Improvements with Scala</h2> <p>The <code>asInstanceOf[Int]</code> dangling off the end there is ugly. And it&#39;s a bad coding practice. It means we haven&#39;t &quot;proven&quot; our types to the compiler and so we must cheat and tell the compiler that it&#39;s really that thing.</p> <p>One thing we could start down the road of is changing the <code>MediaVisitor</code> trait to allow the implementation to define the return type.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class=rouge-code><pre><span class="k">trait</span> <span class="nc">MediaVisitor</span><span class="o">[</span><span class="kt">A</span><span class="o">]</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">visit</span><span class="o">(</span><span class="n">audio</span><span class="k">:</span> <span class="kt">Audio</span><span class="o">)</span><span class="k">:</span> <span class="kt">A</span>
+  <span class="k">def</span> <span class="n">visit</span><span class="o">(</span><span class="n">video</span><span class="k">:</span> <span class="kt">Video</span><span class="o">)</span><span class="k">:</span> <span class="kt">A</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Our class implementations of <code>visit</code> can now be updated too.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+</pre></td><td class=rouge-code><pre><span class="k">class</span> <span class="nc">Audio</span> <span class="k">extends</span> <span class="nc">Media</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">accept</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">visitor</span><span class="k">:</span> <span class="kt">MediaVisitor</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">visit</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+<span class="o">}</span>
+
+<span class="k">class</span> <span class="nc">Video</span> <span class="k">extends</span> <span class="nc">Media</span> <span class="o">{</span>
+  <span class="k">def</span> <span class="n">accept</span><span class="o">[</span><span class="kt">A</span><span class="o">](</span><span class="n">visitor</span><span class="k">:</span> <span class="kt">MediaVisitor</span><span class="o">[</span><span class="kt">A</span><span class="o">])</span><span class="k">:</span> <span class="kt">A</span> <span class="o">=</span> <span class="n">visitor</span><span class="o">.</span><span class="n">visit</span><span class="o">(</span><span class="k">this</span><span class="o">)</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>When we invoke <code>accept</code> now we can explicitly specify the return type.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+</pre></td><td class=rouge-code><pre><span class="k">val</span> <span class="n">bpm</span> <span class="k">=</span> <span class="n">song</span><span class="o">.</span><span class="n">accept</span><span class="o">[</span><span class="kt">Int</span><span class="o">](</span><span class="nc">BPMCalculator</span><span class="o">)</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>However Scala&#39;s type inference can actually figure it out, which means we can totally remove it leaving us with:</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+</pre></td><td class=rouge-code><pre><span class="k">val</span> <span class="n">song</span> <span class="k">=</span> <span class="k">new</span> <span class="nc">Song</span>
+<span class="k">val</span> <span class="n">bpm</span> <span class="k">=</span> <span class="n">song</span><span class="o">.</span><span class="n">accept</span><span class="o">(</span><span class="nc">BPMCalculator</span><span class="o">)</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This is a decent improvement. The visitor pattern in Scala now works as intended.</p> <h2>Using Native Language Features</h2> <p>Scala has other, probably better ways to solve this. Implicit classes effectively allow extension methods on a class by combining a new class with an <code>implicit def</code>. Say we kept our <code>BPMCalculator</code> object but turned it into a class and renamed the method from <code>visit</code> to <code>calculateBpm</code>.</p> <div class=highlight><pre class="highlight scala"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+</pre></td><td class=rouge-code><pre><span class="k">object</span> <span class="nc">BPMCalculator</span> <span class="o">{</span>
+  <span class="k">implicit</span> <span class="k">class</span> <span class="nc">BPMCalculatorAudio</span><span class="o">(</span><span class="n">audio</span><span class="k">:</span> <span class="kt">Audio</span><span class="o">)</span> <span class="o">{</span>
+    <span class="k">def</span> <span class="n">calculateBpm</span> <span class="k">=</span> <span class="o">{</span>
+      <span class="c1">// ... do some magic to determine BPM from audio stream ...
+</span>    <span class="o">}</span>
+  <span class="o">}</span>
+
+  <span class="k">implicit</span> <span class="k">class</span> <span class="nc">BPMCalculatorVideo</span><span class="o">(</span><span class="n">video</span><span class="k">:</span> <span class="kt">Video</span><span class="o">)</span> <span class="o">{}</span>
+    <span class="k">def</span> <span class="n">calculateBpm</span> <span class="k">=</span> <span class="o">{</span>
+      <span class="c1">// ... extract audio stream
+</span>      <span class="c1">// ... do some magic to determine BPM from audio stream ...
+</span>    <span class="o">}</span>
+  <span class="o">}</span>
+<span class="o">}</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This <code>implicit class</code> can live anywhere in the code, but when imported (<code>import BPMCalculator._</code>) makes the method <code>calculateBpm</code> available on <code>Audio</code> and <code>Video</code>.</p> <p>Ultimately both the visitor pattern and the implicit class striving to implement the <a href="//en.wikipedia.org/wiki/Open/closed_principle">Open/Close Principle</a>. Scala makes this possible wholey within the language.</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

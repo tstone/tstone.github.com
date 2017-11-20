@@ -1,0 +1,84 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Moving to Middleman"> <meta property="og:url" content="http://array.blue/blog/2014/moving-to-middleman.html"> <meta property="article:published_time" content="2014-09-20T07:00:00Z"> <meta property="article:tag" content=blog> <meta property="article:tag" content=ruby> <title>[ Moving to Middleman ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2014 blog_2014_moving-to-middleman" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Moving to Middleman</h1> <h4 class=date itemprop=dateCreated>September 20, 2014</h4> <div itemprop=articleBody> <p><a href="/blog/2012/microwave-js.html">Back in 2012</a> I started working on blog platform named <a href="https://github.com/tstone/MicrowaveJS">Microwave.JS</a>. At the time I was working with <a href="https://twitter.com/gklinsing">Grant Klinsing</a> who also <a href="https://github.com/tstone/MicrowaveJS/graphs/contributors">contributed</a> a bit to it as well. The project was based on node.js with the fundamental idea that blog posts were written in Markdown as individual .md files. When the server started it would scan all these files and hold them in memory, allowing search and other type things to be performed on them. I had also toyed with a <a href="https://github.com/tstone/Radiowave">Ruby re-write</a> several months later as well.</p> <p>Time went by and eventually the idea of a static site generated started to grow on me. The past 2 weekends I converted my blog (the site presentingly being viewed) over to <a href="//middlemanapp.com/basics/blogging/">Middleman</a>. I had let my previous domain <code>typeof.co</code> expire which gave me a chance to pick from the new swarm of gTLD&#39;s that are now available. As an aside, I actually have two other domain names that I&#39;d rather have but those gTLD&#39;s aren&#39;t released yet so we&#39;ll see if I can get lucky during the landgrab phase when they do become available.</p> <h2>About Middleman</h2> <p>Middleman solves the same requirements that I had for Microwave.JS:</p> <ul> <li>Write blog posts using a code editor</li> <li>Not have to deal with HTML when writing a blog post</li> <li>Super fast and simple to publish new posts</li> <li>Flexible, offering a good amount of control over presentation</li> </ul> <p>Middleman offers all of these by basically being a pre-compiled Rails app. The site is coded using the framework, then a build command is run which transforms the dynamic Ruby site into a static HTML page by pre-rendering every permutation of page that is possible. It comes bundled with familiar tools like ERB and Sprockets which allows it to have dynamic layouts, asset compression, and similar during the build step.</p> <p>What&#39;s even more crazy is that since it&#39;s so close to Rails, it can use gems and features written for Rails. A good example of this is that my blog is actually running Turbolinks.</p> <p>I maintain two repositories for this site, the <a href="https://github.com/tstone/array.blue">source</a> and the <a href="https://github.com/tstone/tstone.github.com">build</a> (output).</p> <h2>The Start</h2> <p>Middleman has two core files that serve as the origin for the rest of the system: <code>Gemfile</code> and <code>config.rb</code>.</p> <p>The <code>Gemfile</code> basically plays the role of answering the question, &quot;what plugins do you want to use?&quot; Here&#39;s what mine looks like:</p> <div class=highlight><pre class="highlight ruby"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class=rouge-code><pre><span class="n">source</span> <span class="s2">"http://rubygems.org"</span>
+
+<span class="n">gem</span> <span class="s2">"middleman"</span><span class="p">,</span> <span class="s2">"~&gt; 3.3.6"</span>
+<span class="n">gem</span> <span class="s2">"middleman-blog"</span><span class="p">,</span> <span class="s2">"~&gt; 3.5.3"</span>
+<span class="n">gem</span> <span class="s2">"middleman-syntax"</span>
+<span class="n">gem</span> <span class="s2">"middleman-deploy"</span><span class="p">,</span> <span class="s2">"~&gt; 0.3.0"</span>
+<span class="n">gem</span> <span class="s2">"middleman-minify-html"</span>
+<span class="n">gem</span> <span class="s2">"middleman-ogp"</span>
+<span class="n">gem</span> <span class="s2">"middleman-search_engine_sitemap"</span>
+<span class="n">gem</span> <span class="s2">"middleman-blog-similar"</span>
+
+<span class="n">gem</span> <span class="s2">"nokogiri"</span>
+<span class="n">gem</span> <span class="s2">"redcarpet"</span>
+<span class="n">gem</span> <span class="s2">"builder"</span><span class="p">,</span> <span class="s2">"~&gt; 3.0"</span>
+<span class="n">gem</span> <span class="s2">"turbolinks"</span><span class="p">,</span> <span class="ss">require: </span><span class="kp">false</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>The <code>config.rb</code> is where default options are set and where plugins are activated and configured.</p> <div class=highlight><pre class="highlight ruby"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+</pre></td><td class=rouge-code><pre><span class="n">activate</span> <span class="ss">:blog</span> <span class="k">do</span> <span class="o">|</span><span class="n">blog</span><span class="o">|</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">layout</span> <span class="o">=</span> <span class="s2">"layout"</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">default_extension</span> <span class="o">=</span> <span class="s2">".md"</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">tag_template</span> <span class="o">=</span> <span class="s2">"tag.html"</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">calendar_template</span> <span class="o">=</span> <span class="s2">"calendar.html"</span>
+
+  <span class="c1"># pagination</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">paginate</span> <span class="o">=</span> <span class="kp">true</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">per_page</span> <span class="o">=</span> <span class="mi">20</span>
+  <span class="n">blog</span><span class="p">.</span><span class="nf">page_link</span> <span class="o">=</span> <span class="s2">"page/{num}"</span>
+<span class="k">end</span>
+</pre></td></tr></tbody></table></code></pre></div> <h2>Templates</h2> <p>As you can see from the <code>config.rb</code> snippet the configuration allows an overall layout page to be used and for specific page types, tags, calendar, etc. to use specific pages as well. What&#39;s not clear just by looking at the config is those layouts/pages are actually ERB. They could just as well be HAML, Slim, or whatever template engine is preferred.</p> <p>Middleman provides a handful of variables in the template that can be used to describe how things should be displayed. For exmaple, on the blog index page something like the following might take place...</p> <div class=highlight><pre class="highlight html"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+</pre></td><td class=rouge-code><pre><span class="nt">&lt;</span><span class="err">%</span> <span class="na">page_articles</span><span class="err">.</span><span class="na">each</span> <span class="na">do</span> <span class="err">|</span><span class="na">article</span><span class="err">|</span> <span class="err">%</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;article&gt;</span>
+    <span class="nt">&lt;</span><span class="err">%</span> <span class="na">link_to</span><span class="err">(</span><span class="na">article</span><span class="err">)</span> <span class="na">do</span> <span class="err">%</span><span class="nt">&gt;</span>
+      <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">"title"</span><span class="nt">&gt;&lt;</span><span class="err">%=</span> <span class="na">article</span><span class="err">.</span><span class="na">title</span> <span class="err">%</span><span class="nt">&gt;&lt;/span&gt;</span>
+      <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">"date"</span><span class="nt">&gt;&lt;</span><span class="err">%=</span> <span class="na">article</span><span class="err">.</span><span class="na">date</span><span class="err">.</span><span class="na">strftime</span><span class="err">('%</span><span class="na">B</span> <span class="err">%</span><span class="na">e</span><span class="err">,</span> <span class="err">%</span><span class="na">Y</span><span class="err">')</span> <span class="err">%</span><span class="nt">&gt;&lt;/span&gt;</span>
+
+      <span class="nt">&lt;</span><span class="err">%</span> <span class="na">if</span> <span class="na">article</span><span class="err">.</span><span class="na">data</span><span class="err">.</span><span class="na">category</span> <span class="err">%</span><span class="nt">&gt;</span>
+        <span class="nt">&lt;span</span> <span class="na">class=</span><span class="s">"category &lt;%= article.data.category %&gt;"</span><span class="nt">&gt;&lt;</span><span class="err">%=</span> <span class="na">article</span><span class="err">.</span><span class="na">data</span><span class="err">.</span><span class="na">category</span> <span class="err">%</span><span class="nt">&gt;&lt;/span&gt;</span>
+      <span class="nt">&lt;</span><span class="err">%</span> <span class="na">end</span> <span class="err">%</span><span class="nt">&gt;</span>
+    <span class="nt">&lt;</span><span class="err">%</span> <span class="na">end</span> <span class="err">%</span><span class="nt">&gt;</span>
+  <span class="nt">&lt;/article&gt;</span>
+<span class="nt">&lt;</span><span class="err">%</span> <span class="na">end</span> <span class="err">%</span><span class="nt">&gt;</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Middleman in this case is providing the <code>pgae_articles</code> variable. It provides several others as well to allow probably any configuration you could imagine.</p> <h2>Extras</h2> <p>One of the fantastic features of Middleman is the availability of <a href="//middlemanapp.com/advanced/custom/">extensions</a> that are easy to use. It was extremely trivial to add the following features to my site:</p> <ul> <li>Asset unification</li> <li>Asset minification</li> <li>HTML minification</li> <li>sitemap.xml generation</li> <li>Open graph tags</li> <li>Markdown rendering</li> <li>Simple deploys to Github pages</li> </ul> <p>Overall I&#39;ve been happy with the Middleman experience so far and if I ever run across anything for which there is not an extension available, being in Ruby I could always write an extension myself.</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

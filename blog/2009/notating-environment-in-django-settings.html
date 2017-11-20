@@ -1,0 +1,54 @@
+<!doctype html> <html> <head> <meta charset=utf-8 /> <meta http-equiv=X-UA-Compatible content="IE=edge;chrome=1"/> <meta name=viewport content="width=device-width"> <meta property="og:locale" content=en_us> <meta property="og:type" content=article> <meta property="og:title" content="Notating Environment in Django's settings.py"> <meta property="og:url" content="http://array.blue/blog/2009/notating-environment-in-django-settings.html"> <meta property="article:published_time" content="2009-10-26T07:00:00Z"> <meta property="article:tag" content=django> <title>[ Notating Environment in Django's settings.py ].blue</title> <link rel=alternate type="application/atom+xml" title="Atom Feed" href="/feed.xml"/> <link href="//fonts.googleapis.com/css?family=Montserrat:400,700" rel=stylesheet type="text/css" media="(min-width: 767px)"> <link href="/stylesheets/all-2548ef72.css" rel=stylesheet type="text/css"/> <script src="/javascripts/all-641b3993.js"></script> </head> <body class="blog blog_2009 blog_2009_notating-environment-in-django-settings" itemscope itemtype="http://schema.org/Blog"> <div class=wrapper> <header class=page> <h1 itemprop=name><a href="/">[ ].blue</a></h1> <h6 itemprop=author>Blog of <span itemprop=givenName>Titus</span> <span itemprop=familyName>Stone</span></h6> </header> <main> <article itemprop=blogPost itemscope itemtype="http://schema.org/BlogPosting"> <h1 class=title itemprop=headline>Notating Environment in Django's settings.py</h1> <h4 class=date itemprop=dateCreated>October 26, 2009</h4> <div itemprop=articleBody> <p>I answered a <a href="//stackoverflow.com/questions/1626326/how-to-manage-local-vs-production-settings-in-django/1626529#1626529">question (#1626326) on Stack Overflow</a> recently about Django setttings.py files which reminded me I’m still undecided on what the best way to handle this issue.</p> <p>The issue is — How do you handle Django settings which change based on which environment the web app is running in? The Django documentation recommends using something to this effect.</p> <div class=highlight><pre class="highlight python"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class=rouge-code><pre><span class="k">if</span> <span class="n">DEBUG</span><span class="p">:</span>
+    <span class="n">VALUE</span> <span class="o">=</span> <span class="s">'something'</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">VALUE</span> <span class="o">=</span> <span class="s">'something else'</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>I used this approach for a while, but found that it was becoming limiting. The reason why is that it doesn’t actually address the issue of environment. Where the <code>if DEBUG</code> trick is used, we’re really only looking to see if we’re in <code>DEBUG</code> mode, not if we’re running in a development or production environment.</p> <p>When I was first setting up <a href="//github.com/mintchaos/django_compressor">django-compressor</a> (which by the way is teh hotness) I wanted to sets the setup in a development environment with DEBUG=False. The <code>if DEBUG</code> failed miserably here.</p> <h3>settings.py Version 2</h3> <p>So my next attempt was to attempt to determine the machine the settings.py was being evaluated on, and from there set what the environment was.</p> <div class=highlight><pre class="highlight python"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+</pre></td><td class=rouge-code><pre><span class="n">PRODUCTION_SERVERS</span> <span class="o">=</span> <span class="p">[</span><span class="s">'WEBSERVER1'</span><span class="p">,</span><span class="s">'WEBSERVER2'</span><span class="p">,]</span>
+<span class="k">if</span> <span class="n">os</span><span class="o">.</span><span class="n">environ</span><span class="p">[</span><span class="s">'COMPUTERNAME'</span><span class="p">]</span> <span class="ow">in</span> <span class="n">PRODUCTION_SERVERS</span><span class="p">:</span>
+    <span class="n">PRODUCTION</span> <span class="o">=</span> <span class="bp">True</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">PRODUCTION</span> <span class="o">=</span> <span class="bp">False</span>
+
+<span class="n">DEBUG</span> <span class="o">=</span> <span class="ow">not</span> <span class="n">PRODUCTION</span>
+<span class="n">TEMPLATE_DEBUG</span> <span class="o">=</span> <span class="n">DEBUG</span>
+
+<span class="c"># ...</span>
+
+<span class="k">if</span> <span class="n">PRODUCTION</span><span class="p">:</span>
+    <span class="n">VALUE</span> <span class="o">=</span> <span class="s">'something'</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">VALUE</span> <span class="o">=</span> <span class="s">'something else'</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>This is easily an improvement over <code>if DEBUG</code>. At least now we have some control over values based on environment. I used this for a while and then realized…</p> <p>What if I have two installations of Django running on the same physical machine but which should be running in different environments?</p> <p>This is a conceivable situation. Let’s say in a smaller company like the one I work in we only have 1 webserver. Departments request features from the web team, which then get implemented by developer(s). However the features need to be tested by the web team and evaluated by the department before deployed to the production site.</p> <p>So, the webserver gets configured to run 2 virtual hosts: One for “testing.domain.com” and another for “www.domain.com.” BAM! The “if PRODUCTION” method just failed. Why? Because we technically now have 3 environments (development, testing, production), 2 of which run on the same physical server.</p> <p>Imagine this bit of settings.py...</p> <div class=highlight><pre class="highlight python"><code><table class="rouge-table"><tbody><tr><td class="rouge-gutter gl"><pre class="lineno">1
+2
+3
+4
+</pre></td><td class=rouge-code><pre><span class="k">if</span> <span class="n">PRODUCTION</span><span class="p">:</span>
+    <span class="n">DATABASE_HOST</span> <span class="o">=</span> <span class="s">'192.168.1.1'</span> <span class="c"># Production MySQL</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">DATABASE_HOST</span> <span class="o">=</span> <span class="s">'localhost'</span>
+</pre></td></tr></tbody></table></code></pre></div> <p>Bad things would follow. The testing copy of the web app (testing.domain.com) would load up, and mark <code>PRODUCTION=True</code> as it is technically on the production server. It then uses the production MySQL database. Fail.</p> <p>To overcome this, our settings.py file really needs a way to distinguish what environment it is regardless of which physical machine it’s located on.</p> <h3>settings.py Version 3</h3> <p>Some ideas I’ve had to address this would to set the environment based on…</p> <ul> <li>The folder path the app is currently located in. The code for this could get ugly easily.</li> <li>The complete hostname the server is running under. This might be win.</li> <li>Something else?</li> </ul> <p>I’ll post some code when I find something that works well that I like.</p> <p>On a related note, I was reading the <a href="//www.sinatrarb.com/configuration.html">Sinatra (ruby) documentation</a> this week, and I noticed that it automatically sets the environment based on the values set by the RACK_ENV variable. This would be the equivalent of adjusting the settings.py based on the presence of a WSGI or FCGI (or whatever) variable. It seems like a really neat idea, however it’s somewhat dependent on the way Django is being loaded, and given that there are so many possibilities, I’m not sure if it’d work out as well for Django as it does for Sinatra.</p> </div> </article> </main> </div> <footer> <span>&copy; Titus Stone</span> <a href="/">Home</a> <a href="//github.com/tstone">Github</a> <a href="//twitter.com/andstuff">Twitter</a> </footer> <script>
+        (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+        (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+        })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+        ga('create', 'UA-32115012-1', 'auto');
+        ga('send', 'pageview');
+      </script> </body> </html>

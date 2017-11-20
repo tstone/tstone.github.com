@@ -1,0 +1,995 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Blog Name</title>
+  <subtitle>Blog subtitle</subtitle>
+  <id>http://blog.url.com/</id>
+  <link href="http://blog.url.com/"/>
+  <link href="http://blog.url.com/feed.xml" rel="self"/>
+  <updated>2016-05-10T07:00:00Z</updated>
+  <author>
+    <name>Blog Author</name>
+  </author>
+  <entry>
+    <title>Implicit Function Conversion</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2016/implicit-function-conversion.html"/>
+    <id>http://blog.url.com/blog/2016/implicit-function-conversion.html</id>
+    <published>2016-05-10T07:00:00Z</published>
+    <updated>2017-11-17T08:30:45-07:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;Most Scala developers are familiar with implicit type conversion which grants the Scala compiler the ability to automatically convert any type &lt;code&gt;A&lt;/code&gt; to &lt;code&gt;B&lt;/code&gt; at compilation time.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;case class Person(name: String, age: Int)
+
+implicit def personToInt(p: Person): Int = p.age
+
+def increment(i: Int) = i + 1
+
+val john = Person("John", 23)
+val johnsAgeNextYear = increment(john)
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;One area where this abstraction leaks is when applying a function.  The following is NOT possible solely by the &lt;code&gt;implicit def&lt;/code&gt;:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;val people: Seq[Person] = Seq(Person("John", 23), Person("Sally", 38))
+val agesNextyear = people.map(increment)
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;At first glance this seems like a short coming.  Scala knows how to implicitly convert from &lt;code&gt;Person =&amp;gt; Int&lt;/code&gt;.  &lt;code&gt;val people&lt;/code&gt; is a &lt;code&gt;Seq[Person]&lt;/code&gt;, therefore it should be possible to map that collection to a &lt;code&gt;Seq[Int]&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The problem, however, isn&amp;#39;t that Scala doesn&amp;#39;t know how to do &lt;code&gt;Person =&amp;gt; Int&lt;/code&gt;.  Instead it is that &lt;code&gt;map&lt;/code&gt; is expecting a function of type signature &lt;code&gt;Person =&amp;gt; B&lt;/code&gt; and &lt;code&gt;increment&lt;/code&gt; is actually &lt;code&gt;Int =&amp;gt; B&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;It turns out this can be resolved by defining a second implicit  conversion:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;implicit def intFunc1ToPersonFunc1[R](f: Int =&amp;gt; R): Person =&amp;gt; R =
+  (p: Person) =&amp;gt; f(p.age)
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Scala now has two implicit functions, one to &lt;code&gt;Person =&amp;gt; Int&lt;/code&gt; and a second to &lt;code&gt;(Person =&amp;gt; B) =&amp;gt; (Int =&amp;gt; B)&lt;/code&gt;.  It&amp;#39;s now possible to apply &lt;code&gt;increment&lt;/code&gt; when mapping a &lt;code&gt;Seq[Person]&lt;/code&gt; because Scala will implicit convert &lt;code&gt;increment&lt;/code&gt; to a function that takes a &lt;code&gt;Person&lt;/code&gt; and returns their age plus one.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;val agesNextyear = people.map(increment)
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;There&amp;#39;s a bit of a problem with the &lt;code&gt;def intFunc1ToPersonFunc1&lt;/code&gt; however: it repeats the same logic of conversion that is already in the &lt;code&gt;implicit def personToInt&lt;/code&gt;.  It would be better to describe that conversion once, and use it wherever needed.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;implicit def intFunc1ToPersonFunc1[R](f: Int =&amp;gt; R)(implicit convert: Person =&amp;gt; Int): Person =&amp;gt; R =
+  (p: Person) =&amp;gt; f(convert(p))
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Now any conversion from &lt;code&gt;Person =&amp;gt; Int&lt;/code&gt; can be used, as long as it is in scope.&lt;/p&gt;
+
+&lt;p&gt;In fact, this approach could be used to generically allow &lt;em&gt;any&lt;/em&gt; implicit function conversion for all types that have an implicit conversion defined for them.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;implicit def aFuncToBFunc[A,B,R](f: A =&amp;gt; R)(implicit convert: B =&amp;gt; A): B =&amp;gt; R =
+  f.compose(convert)
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;SIDEBAR:  &lt;code&gt;(b: B) =&amp;gt; f(convert(b))&lt;/code&gt; is the same thing as &lt;code&gt;f.compose(convert)&lt;/code&gt;&lt;/p&gt;
+
+&lt;p&gt;Global implicit type conversions that work on all types can sometimes cause unpredictable bugs.  Be careful how this is used.&lt;/p&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Getting Started with Akka and Testing</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/intro-to-akka.html"/>
+    <id>http://blog.url.com/blog/2014/intro-to-akka.html</id>
+    <published>2014-10-13T07:00:00Z</published>
+    <updated>2017-11-17T08:30:45-07:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;h4&gt;Assumptions&lt;/h4&gt;
+
+&lt;ol&gt;
+&lt;li&gt; You have a working knowledge of Scala&lt;/li&gt;
+&lt;li&gt; You don&amp;#39;t know anything about Akka&lt;/li&gt;
+&lt;li&gt; You know how to write and run tests&lt;/li&gt;
+&lt;li&gt; You know how to use SBT to add dependencies to your project&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;h3&gt;Introduction&lt;/h3&gt;
+
+&lt;p&gt;Akka is one of those libraries that seems like a party that everyone is enjoying except you.  Or at least that&amp;#39;s how I felt for a long while. Part of the reason
+I suspect this is so is because while Akka includes &lt;a href="http://akka.io/docs/"&gt;comprehensive online documentation&lt;/a&gt; it&amp;#39;s difficult to go from a description
+of the pieces to knowing how to apply them to building systems.  This is particularly true
+for those who have worked with other concurrency models and come to Akka with some pre-conceived ideas about how things work.&lt;/p&gt;
+
+&lt;p&gt;In truth Akka actually &lt;em&gt;simplifies&lt;/em&gt; the task of building concurrent systems but has a prerequisite that you to have some key points of understanding first,
+and without those it&amp;#39;s easy to get lost.  As you read the following guide continually ask yourself, &amp;quot;What is Akka doing for me, and what do I need to do?&amp;quot;
+Being able to answer this question is the first step towards sucess with Akka.&lt;/p&gt;
+
+&lt;h3&gt;Understand Your Part&lt;/h3&gt;
+
+&lt;p&gt;The most important part of using Akka is comprehending what the developer is responsible for and what the framework is responsible for.  A lot of poor
+architectural decisions await if this isn&amp;#39;t well understood.  Akka has many features but most don&amp;#39;t magically appear without you doing something.&lt;/p&gt;
+
+&lt;p&gt;As you&amp;#39;re probably aware the unit of abstraction in Akka is the &lt;em&gt;Actor&lt;/em&gt;.  &lt;a href="http://en.wikipedia.org/wiki/Actor_model"&gt;Actors&lt;/a&gt; aren&amp;#39;t unique to Akka but Akka
+does have it&amp;#39;s own slant on things which care should be given to learn.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;MinimumViableActor&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Actor&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;receive&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Map&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;empty&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The minimum requirement for an actor is that it implements &lt;code&gt;def receive: Receive&lt;/code&gt;.  &lt;code&gt;receive&lt;/code&gt; is just a Scala partial function with a type signature of
+&lt;code&gt;Any =&amp;gt; Unit&lt;/code&gt;.  You might be wondering what the &lt;code&gt;Map.emtpy&lt;/code&gt; bit on the end there is -- In scala &lt;code&gt;Map.empty&lt;/code&gt; will represent a partial function that does nothing.
+It&amp;#39;s a bit weird, I know, but that&amp;#39;s the syntax.  Only if you want an actor that does nothing would you write that (which probably means you can throw away
+that knowledge right now).&lt;/p&gt;
+
+&lt;h3&gt;Messages&lt;/h3&gt;
+
+&lt;p&gt;&lt;code&gt;receive&lt;/code&gt; will be called whenever a message is sent to your actor.  You can think of messages as a hybrid between an event happening in the
+system and a function call.  Unlike pub/sub systems or the browser DOM, events aren&amp;#39;t pushed to every actor in the system.  They must be explicitly sent
+to an actor (more specifically to an actor &lt;em&gt;reference&lt;/em&gt;, which we&amp;#39;ll get into later).  In addition to incoming messages, an actor will probably want to send
+outgoing messages to other actors.&lt;/p&gt;
+
+&lt;p&gt;For example, if there was an actor which read from the database, an incoming message might be &amp;quot;read this row&amp;quot; and the actor would
+reply by sending back that database row after fetching it from the database.&lt;/p&gt;
+
+&lt;p&gt;Let&amp;#39;s build a simple actor which just echos whatever messages it receives.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActor&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Actor&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;receive&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="n"&gt;msg&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;sender&lt;/span&gt; &lt;span class="o"&gt;!&lt;/span&gt; &lt;span class="n"&gt;msg&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The &lt;code&gt;Actor&lt;/code&gt; trait puts some methods and values in scope.  &lt;code&gt;sender&lt;/code&gt; comes from &lt;code&gt;Actor&lt;/code&gt; and is a function (&lt;code&gt;def&lt;/code&gt;) which returns the &amp;quot;thing&amp;quot; that sent the current
+message  to the actor.  The fact that it is a function will become relevant later.&lt;/p&gt;
+
+&lt;h3&gt;Testing&lt;/h3&gt;
+
+&lt;p&gt;Before we get too far into Akka, it&amp;#39;s useful to talk about testing.  A system that you can&amp;#39;t trust and refactor isn&amp;#39;t any fun to work on.  Getting into testing
+early on will also let you explore how Akka is working which will make learning faster.  Akka includes a library called &amp;quot;TestKit&amp;quot;
+(&lt;a href="http://doc.akka.io/docs/akka/snapshot/scala/testing.html"&gt;documentation&lt;/a&gt;).&lt;/p&gt;
+
+&lt;h5&gt;A Couple Things to Note:&lt;/h5&gt;
+
+&lt;ol&gt;
+&lt;li&gt;I&amp;#39;ll be using &lt;a href="http://etorreborre.github.io/specs2/"&gt;Specs2&lt;/a&gt;, but the same things should work with with Scalatest or whatever other framework&lt;/li&gt;
+&lt;li&gt;TestKit is not included by default with Akka, it must be added as an additional dependency.&lt;/li&gt;
+&lt;/ol&gt;
+
+&lt;p&gt;Let&amp;#39;s write a test for our &lt;code&gt;EchoActor&lt;/code&gt;.  We want to assert that when our actor receives a message it echos that exact message back to the sender.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Specification&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="s"&gt;"=&amp;gt; Any"&lt;/span&gt; &lt;span class="n"&gt;should&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="s"&gt;"echo message back to sender"&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+      &lt;span class="o"&gt;???&lt;/span&gt;
+    &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We&amp;#39;ve stubbed out what the test might look like.  I like to describe tests which have to do with a message being sent to an actor as starting with &amp;quot;=&amp;gt;&amp;quot; and describing
+the type of the message.  This is a personal preference and is not a requirement.  Right now we only have one message and it&amp;#39;s type is &lt;code&gt;Any&lt;/code&gt; so it isn&amp;#39;t too helpful.
+Later when we have actors that receive many messages types it becomes a nice way to organize tests.&lt;/p&gt;
+
+&lt;p&gt;Before we can write an actor test we need to mixin the bits that Akka TestKit gives
+us.  The first thing is to change &lt;code&gt;Specification&lt;/code&gt;, which is a class, to &lt;code&gt;SpecificationLike&lt;/code&gt; which is a trait as TestKit requires us to inherit from a &lt;code&gt;TestKit&lt;/code&gt; class.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;ActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"test-system"&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;SpecificationLike&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;&lt;code&gt;TestKit&lt;/code&gt; creates a new &lt;code&gt;ActorSystem&lt;/code&gt; to run the tests -- that&amp;#39;s the thing which manages all the actors.  It&amp;#39;s a good practice to shut down the system
+after the Spec is done running so we can add that...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;ActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"test-system"&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt; &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;SpecificationLike&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;override&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;map&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;fs&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="nc"&gt;Fragments&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;fs&lt;/span&gt; &lt;span class="o"&gt;^&lt;/span&gt; &lt;span class="nc"&gt;Step&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;shutdownTestKit&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;private&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;this&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;shutdownTestKit&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shutdownActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;system&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+
+  &lt;span class="o"&gt;...&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;I realize this syntax is a but funky bit you won&amp;#39;t ever have to type this again (I&amp;#39;ll show you in a second).  All this does is say, &amp;quot;after the examples
+have finished running, execute the step &lt;code&gt;shutdownTestKit&lt;/code&gt;&amp;quot;.  While we&amp;#39;re setting this up I have a few recommendations that will make things easier
+later on.&lt;/p&gt;
+
+&lt;p&gt;First, when dealing with asynchronous things it&amp;#39;s easier to debug if the specs run in the order you&amp;#39;ve entered them.  By default Specs2 runs each &lt;code&gt;should&lt;/code&gt;
+block at random or in parallel (depending on config) but it would be easier if we ran them all in order.  This can be achieved by adding &lt;code&gt;sequential&lt;/code&gt; as
+a step.&lt;/p&gt;
+
+&lt;p&gt;Second, TestKit includes a trait &lt;code&gt;ImplicitSender&lt;/code&gt; which will set the sender whenever you send a message to an actor your testing.  Later on this will make
+assertions a tad easier.&lt;/p&gt;
+
+&lt;p&gt;Third, by default Specs2 includes implicit conversions for duration.  Unfortunately the duration type it implicitly converts to is not the same duration type that
+Akka uses.  This can lead to frustration later on by typing in &lt;code&gt;1.second&lt;/code&gt; (been there, done that).
+These implicit conversions can be disabled by mixing in the trait, &lt;code&gt;NoTimeConversions&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;So our final test boilerplate for testing an Akka actor should look like the following.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;ActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"test-system"&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt;
+  &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;SpecificationLike&lt;/span&gt;
+  &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;ImplicitSender&lt;/span&gt;
+  &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;NoTimeConversions&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+
+  &lt;span class="k"&gt;override&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;map&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;fs&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="nc"&gt;Fragments&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sequential&lt;/span&gt; &lt;span class="o"&gt;^&lt;/span&gt; &lt;span class="n"&gt;fs&lt;/span&gt; &lt;span class="o"&gt;^&lt;/span&gt; &lt;span class="nc"&gt;Step&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;shutdownTestKit&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;private&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;this&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;shutdownTestKit&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shutdownActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;system&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+
+  &lt;span class="s"&gt;"=&amp;gt; Any"&lt;/span&gt; &lt;span class="n"&gt;should&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="s"&gt;"echo message back to sender"&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+      &lt;span class="o"&gt;???&lt;/span&gt;
+    &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Right.  That is pretty ugly and verbose.  I highly recommend making an &lt;code&gt;abstract class&lt;/code&gt; somewhere else that you can inherit from for all your Akka specs.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="c1"&gt;// src/test/scala/support/ActorSpec.scala
+&lt;/span&gt;
+&lt;span class="k"&gt;package&lt;/span&gt; &lt;span class="nn"&gt;test.support&lt;/span&gt;
+
+&lt;span class="k"&gt;abstract&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;ActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;ActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"test-system"&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt;
+  &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;SpecificationLike&lt;/span&gt;
+  &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;ImplicitSender&lt;/span&gt;
+  &lt;span class="k"&gt;with&lt;/span&gt; &lt;span class="nc"&gt;NoTimeConversions&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+
+  &lt;span class="k"&gt;override&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;map&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;fs&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="nc"&gt;Fragments&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;sequential&lt;/span&gt; &lt;span class="o"&gt;^&lt;/span&gt; &lt;span class="n"&gt;fs&lt;/span&gt; &lt;span class="o"&gt;^&lt;/span&gt; &lt;span class="nc"&gt;Step&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;shutdownTestKit&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;private&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;this&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;shutdownTestKit&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;TestKit&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;shutdownActorSystem&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;system&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This will then clean up the actual spec...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;test.support.ActorSpec&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;ActorSpec&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="s"&gt;"=&amp;gt; Any"&lt;/span&gt; &lt;span class="n"&gt;should&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="s"&gt;"echo message back to sender"&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+      &lt;span class="o"&gt;???&lt;/span&gt;
+    &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3&gt;Asking&lt;/h3&gt;
+
+&lt;p&gt;Now that we&amp;#39;ve got all the setup out of the way once and for all, let&amp;#39;s actually test the actor.  If we just sent a message to our actor and it did
+something and that was it, we might write a test that sends the message then checks that whatever thing happened.  However, we expect that not only
+will our actor receive messages, but also that it will reply.&lt;/p&gt;
+
+&lt;p&gt;To test a response we can use a thing called &lt;em&gt;ask&lt;/em&gt;.  Ask has two different syntaxes but the more common one is &lt;code&gt;?&lt;/code&gt;.  By default ask is not in scope
+and must be imported with &lt;code&gt;import akka.pattern.ask&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Ask is easy to abuse so before you see the code for it understand this: Ask is primarily for outside code to interface with the actor system.  It is
+not for use within your actors, specifically for them to talk to each other.  It&amp;#39;s possible to write code like that but you want to avoid doing so.
+Test are a perfect example of &amp;quot;outside code&amp;quot; that is &amp;quot;interfacing&amp;quot; with your actor system, so ask will make your life easier in this context.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;test.support.ActorSpec&lt;/span&gt;
+&lt;span class="k"&gt;import&lt;/span&gt; &lt;span class="nn"&gt;scala.concurrent.duration._&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;EchoActorSpec&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;ActorSpec&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="s"&gt;"=&amp;gt; Any"&lt;/span&gt; &lt;span class="n"&gt;should&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="s"&gt;"echo message back to sender"&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+      &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;subject&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;TestActorRef&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;EchoActor&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+      &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;futureResp&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;subject&lt;/span&gt; &lt;span class="o"&gt;?&lt;/span&gt; &lt;span class="s"&gt;"arkanoid"&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="n"&gt;mapTo&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+      &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;resp&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Await&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;resolve&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;futureResp&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mf"&gt;1.&lt;/span&gt;&lt;span class="n"&gt;second&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+      &lt;span class="n"&gt;resp&lt;/span&gt; &lt;span class="n"&gt;mustEqual&lt;/span&gt; &lt;span class="s"&gt;"arkanoid"&lt;/span&gt;
+    &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;There are some new bits of syntax here.  The &lt;code&gt;TestActorRef[EchoActor]&lt;/code&gt; part tells Akka to create a new &lt;code&gt;EchoActor&lt;/code&gt; and to do so specifically for testing.
+&lt;code&gt;TestActorRef&lt;/code&gt; is a type that let&amp;#39;s us reference an actor, giving us special access for testing that we wouldn&amp;#39;t otherwise have in a running system.  It also makes
+the messaging synchronous and thus easier to test.&lt;/p&gt;
+
+&lt;p&gt;On the next line our first use of ask appears, &lt;code&gt;subject ? &amp;quot;arkanoid&amp;quot;&lt;/code&gt;.  Ask always returns a &lt;code&gt;Future[Any]&lt;/code&gt;.  It&amp;#39;s possible to change the type
+through &lt;code&gt;mapTo&lt;/code&gt; which is shorthand for &lt;code&gt;(subject ? &amp;quot;arkanoid&amp;quot;).map(_.asInstanceOf[String])&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;There are other ways to test that messages came back.  However ask is the simplest of them to use.  The downside is that the future must
+be unwrapped.  In this case I turned the asynchronous future into a synchronous wait through &lt;code&gt;Await&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;The clever &lt;code&gt;1.second&lt;/code&gt; syntax is made possible through the duration import, &lt;code&gt;import scala.concurrent.duration._&lt;/code&gt;.  It specifies how long the test should
+wait for that Future to resolve before considering it a failure.  &lt;code&gt;Await&lt;/code&gt; returns the value inside the Future, which in this case is our response message
+that the actor sent back to us.&lt;/p&gt;
+
+&lt;p&gt;Personally I find the Await syntax slightly verbose.  I prefer to create a helper function to simplify it a bit.  Typically I stick this helper function
+on my &lt;code&gt;ActorSpec&lt;/code&gt; class so that all actor tests can use it...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;timeout&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Duration&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mf"&gt;1.&lt;/span&gt;&lt;span class="n"&gt;second&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;await&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;futureResp&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nc"&gt;Future&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Any&lt;/span&gt;&lt;span class="o"&gt;])(&lt;/span&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="n"&gt;timeout&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Duration&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt;
+  &lt;span class="nc"&gt;Await&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;resolve&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;futureResp&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;timeout&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="n"&gt;asInstanceOf&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This shortens the test syntax down to...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="s"&gt;"echo message back to sender"&lt;/span&gt; &lt;span class="n"&gt;in&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;subject&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;TestActorRef&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;EchoActor&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+  &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;resp&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;await&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;String&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;subject&lt;/span&gt; &lt;span class="o"&gt;?&lt;/span&gt; &lt;span class="s"&gt;"arkanoid"&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="n"&gt;resp&lt;/span&gt; &lt;span class="n"&gt;mustEqual&lt;/span&gt; &lt;span class="s"&gt;"arkanoid"&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content>
+  </entry>
+  <entry>
+    <title>Reproducing Clojure's apply Method in Scala</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/reproducing-clojure-apply-in-scala.html"/>
+    <id>http://blog.url.com/blog/2014/reproducing-clojure-apply-in-scala.html</id>
+    <published>2014-10-04T07:00:00Z</published>
+    <updated>2017-11-17T08:30:45-07:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;As you most likely already know, &lt;a href="http://clojure.org/"&gt;Clojure&lt;/a&gt; is a reincarnation of Lisp on the JVM.  It is a functional, dynamic language that
+promotes functions as the primary unit and as such has some interesting functions for deal with, well, functions.  &lt;code&gt;apply&lt;/code&gt; is one of those methods.
+At first glance &lt;code&gt;apply&lt;/code&gt; is a tad confusing and the documentation doesn&amp;#39;t help a whole lot either...&lt;/p&gt;
+
+&lt;blockquote&gt;
+&lt;p&gt;([f args] [f x args] [f x y args] [f x y z args] [f a b c d &amp;amp; args])
+Applies fn f to the argument list formed by prepending intervening arguments to args.&lt;/p&gt;
+&lt;/blockquote&gt;
+
+&lt;p&gt;For some background, being a dynamic language Clojure allows a type of method overloading based on function &lt;a href="http://en.wikipedia.org/wiki/Arity"&gt;arity&lt;/a&gt;
+(the number of arguments).  If you&amp;#39;ve ever used Erlang or Elixir this should be a familiar concept.  The first line of the documentation specifies
+that the first argument is always &lt;code&gt;f&lt;/code&gt; which is a function to be applied.  The last argument &lt;code&gt;args&lt;/code&gt; is also specified to be the thing which applied. So
+what are &lt;code&gt;x&lt;/code&gt;, &lt;code&gt;y&lt;/code&gt;, &lt;code&gt;z&lt;/code&gt;, etc.?  Trying apply out in the console might make it clearer.&lt;/p&gt;
+
+&lt;p&gt;Clojure collections have a &lt;code&gt;conj&lt;/code&gt; (conjoin) method which behaves similar to Scala&amp;#39;s &lt;code&gt;:+&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;:+&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;  &lt;span class="c1"&gt;// =&amp;gt; Seq(1, 2, 3 4)
+&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;&lt;div class="highlight"&gt;&lt;pre class="highlight clojure"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;conj&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="c1"&gt;;; =&amp;gt; [1 2 3 4]&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We can use the &lt;code&gt;conj&lt;/code&gt; method to understand &lt;code&gt;apply&lt;/code&gt; a bit better...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight clojure"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;conj&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="c1"&gt;;; =&amp;gt; [1 2 3 [4 5 6]]&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="nb"&gt;apply&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="nb"&gt;conj&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="w"&gt; &lt;/span&gt;&lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="p"&gt;])&lt;/span&gt;&lt;span class="w"&gt;  &lt;/span&gt;&lt;span class="c1"&gt;;; =&amp;gt;  [1 2 3 4 5 6]&lt;/span&gt;&lt;span class="w"&gt;
+&lt;/span&gt;&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;In this use of &lt;code&gt;apply&lt;/code&gt;, &lt;code&gt;conj&lt;/code&gt; is the &lt;code&gt;f&lt;/code&gt; argument (the function being applied), &lt;code&gt;[1 2 3]&lt;/code&gt; is the &lt;code&gt;x&lt;/code&gt; argument, and &lt;code&gt;[4 5 6]&lt;/code&gt; are the args being
+used for the application of &lt;code&gt;conj&lt;/code&gt;.  This shows us what is happening:  &lt;code&gt;apply&lt;/code&gt; takes a function and applies it with the given arguments for every
+argument of the list of args at the end.  Without &lt;code&gt;apply&lt;/code&gt; we got nested lists, where as with &lt;code&gt;apply&lt;/code&gt; we got one list.  That tells us &lt;code&gt;apply&lt;/code&gt; has
+a kind of accumulation or fold-like effect.&lt;/p&gt;
+
+&lt;p&gt;This clearly can be reproduced in Scala.&lt;/p&gt;
+
+&lt;p&gt;As with most things Scala it&amp;#39;s helpful to start with a type signature.  In this case it&amp;#39;s worth considering the type signature of &lt;code&gt;conj&lt;/code&gt; so that we
+can imagine how &lt;code&gt;apply&lt;/code&gt; might use it.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;conj&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;seq&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;],&lt;/span&gt; &lt;span class="n"&gt;a&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;seq&lt;/span&gt; &lt;span class="o"&gt;:+&lt;/span&gt; &lt;span class="n"&gt;a&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;One thing to notice here, and this is relevant to our implementation of &lt;code&gt;apply&lt;/code&gt;, the first argument type is the same as the return type.  We know
+we want to take in a function.  To limit scope initially we&amp;#39;ll only worry about &lt;code&gt;Function2&lt;/code&gt; and try to reproduce specifically the &lt;code&gt;conj&lt;/code&gt; example in
+Scala.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;,&lt;span class="kt"&gt;B&lt;/span&gt;,&lt;span class="kt"&gt;C&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;C&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;B*&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;C&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;???&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This is a start.  It lets us take in a function &lt;code&gt;f&lt;/code&gt; which has two arguments, one which we will capture as &lt;code&gt;x: A&lt;/code&gt;, and a second which we will get a list
+of as &lt;code&gt;args: B*&lt;/code&gt;.  However this is missing our rule, that the first argument (&lt;code&gt;x&lt;/code&gt;) must also be the same as the return type.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;,&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;B*&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="o"&gt;???&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This now let&amp;#39;s us chain the result of each application together.  We could implement this recursively or we could use an iterator.  In this case
+&lt;code&gt;foldLeft&lt;/code&gt; would allow us to start with the initial value &lt;code&gt;x&lt;/code&gt; and reduce the arguments down to a final return value of &lt;code&gt;A&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;,&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="kt"&gt;B&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;B*&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt;
+  &lt;span class="n"&gt;args&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;foldLeft&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="k"&gt;case&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;acc&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;f&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;acc&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt;&lt;span class="n"&gt;b&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;So as you can see, Clojure&amp;#39;s &lt;code&gt;apply&lt;/code&gt; is really just a different way to invoke what Scala calls &lt;code&gt;foldLeft&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;In use in Scala this becomes a bit tricky because we can&amp;#39;t just pass in &lt;code&gt;conj&lt;/code&gt; because Scala won&amp;#39;t treat it as a function by default...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;conj&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;&amp;lt;&lt;/span&gt;&lt;span class="n"&gt;console&lt;/span&gt;&lt;span class="k"&gt;&amp;gt;:&lt;/span&gt;&lt;span class="mi"&gt;10&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;error:&lt;/span&gt; &lt;span class="k"&gt;type&lt;/span&gt; &lt;span class="kt"&gt;mismatch&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt;
+ &lt;span class="n"&gt;found&lt;/span&gt;   &lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Nothing&lt;/span&gt;&lt;span class="o"&gt;],&lt;/span&gt; &lt;span class="nc"&gt;Nothing&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Nothing&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+ &lt;span class="n"&gt;required&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="kt"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;],&lt;/span&gt; &lt;span class="nc"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&amp;gt;&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+              &lt;span class="n"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;conj&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The &lt;code&gt;_&lt;/code&gt; is required after the function to signal that we&amp;#39;re talking about the function &lt;code&gt;conj&lt;/code&gt; not attempting to call it.  Also, you&amp;#39;ll notice that Scala&amp;#39;s
+type inference is detecting &lt;code&gt;conj&lt;/code&gt; as &lt;code&gt;(Seq[Nothing], Nothing) =&amp;gt; Seq[Nothing]&lt;/code&gt;.  Apparently the type inference can&amp;#39;t figure out we&amp;#39;re dealing with &lt;code&gt;Int&lt;/code&gt;&amp;#39;s
+so that will need to be specified as well.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="n"&gt;apply&lt;/span&gt;&lt;span class="o"&gt;((&lt;/span&gt;&lt;span class="n"&gt;conj&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;_&lt;/span&gt;&lt;span class="o"&gt;),&lt;/span&gt; &lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;),&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="n"&gt;res2&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;List&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;While this might not translate directly over to Scala as being something useful in it&amp;#39;s current form, the concept is interesting.  The idiomatic way
+of writing this in Scala would be to create a new partial function and just use the &lt;code&gt;foldLeft&lt;/code&gt; off the list of arguments.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;4&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;5&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;6&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="n"&gt;foldLeft&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;Seq&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;1&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;2&lt;/span&gt;&lt;span class="o"&gt;,&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;&lt;span class="o"&gt;))(&lt;/span&gt;&lt;span class="k"&gt;_&lt;/span&gt; &lt;span class="o"&gt;:+&lt;/span&gt; &lt;span class="k"&gt;_&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content>
+  </entry>
+  <entry>
+    <title>Build a Chess AI Player</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/chess-ai.html"/>
+    <id>http://blog.url.com/blog/2014/chess-ai.html</id>
+    <published>2014-10-03T07:00:00Z</published>
+    <updated>2017-11-17T08:30:45-07:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;I&amp;#39;ve been doing a lot of algorithm-y things lately, and in particular a few co-workers have been working on some sudoku game
+implementations.  As a result I&amp;#39;ve ended up coding a few bits of sudoku code &lt;a href="https://github.com/tstone/algorithms/blob/master/jvm/src/main/scala/sudoku/2DArray.scala"&gt;here&lt;/a&gt;
+and &lt;a href="https://github.com/tstone/algorithms/blob/master/jvm/src/main/java/algorithms/sudoku/2DArrayJ.java"&gt;there&lt;/a&gt;.  I also recently
+read through (most of) &lt;em&gt;&lt;a href="http://amzn.com/0486678709"&gt;Introduction to Graph Theory&lt;/a&gt;&lt;/em&gt; by Richard Trudeau.&lt;/p&gt;
+
+&lt;p&gt;I came across a simple implementation of the game of 2-player chess in Ruby and it struck me that I could build an AI player for it.  Not
+that I&amp;#39;ve ever done anything previously with AI in my life, but with a lot of permutation generation and graph algorithms fresh
+in my mind I started to quickly conceive of how I might approach this.&lt;/p&gt;
+
+&lt;p&gt;Without a doubt there are well-studied approaches as to how this should work already in existence.  But I wanted to reason through it myself
+first.  I&amp;#39;ve found that often when I try to solve a problem myself, when I then do read up on already discovered solutions it&amp;#39;s typically much
+easier for me to understand them as I&amp;#39;m already familiar with the problem domain and can focus solely on the solution.&lt;/p&gt;
+
+&lt;p&gt;In any case, here was my general strategy.&lt;/p&gt;
+
+&lt;p&gt;At the top level was the notion of an &amp;quot;AI Player&amp;quot;.  At any one point in time the ai player has only one piece of state: a move list (an array of moves).
+The move list is generated by a &lt;code&gt;Strategy&lt;/code&gt;.  In a nutshell, the &amp;quot;AI&amp;quot; part of all this is a simple algorithm to assess the state of the game.  A decision
+will then be made to continue with the current move list or to use another strategy to generate a new move list.&lt;/p&gt;
+
+&lt;p&gt;Assume a variable &lt;code&gt;game&lt;/code&gt; is in scope which has three properties, &lt;code&gt;#board&lt;/code&gt;: the game board as a 2D array; &lt;code&gt;#moves&lt;/code&gt;: a list of all moves up to that point;
+and &lt;code&gt;#graveyard&lt;/code&gt;: pieces that have been removed from the board (pieces active on the board would be available via &lt;code&gt;#board#pieces&lt;/code&gt;).&lt;/p&gt;
+
+&lt;p&gt;The ai player logic would be something simple like...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+19
+20
+21
+22
+23
+24
+25
+26
+27
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;AiPlayer&lt;/span&gt;
+
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;initialize&lt;/span&gt;
+    &lt;span class="vi"&gt;@move_list&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;[]&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;next_move&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;in_check?&lt;/span&gt;
+      &lt;span class="vi"&gt;@move_list&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;DefensiveStrat&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;determine_moves&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;elsif&lt;/span&gt; &lt;span class="o"&gt;!&lt;/span&gt;&lt;span class="n"&gt;moves_left?&lt;/span&gt; &lt;span class="n"&gt;or&lt;/span&gt; &lt;span class="o"&gt;!&lt;/span&gt;&lt;span class="n"&gt;next_move_is_valid?&lt;/span&gt;
+      &lt;span class="vi"&gt;@move_list&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;choose_new_offense&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;).&lt;/span&gt;&lt;span class="nf"&gt;determine_moves&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+
+    &lt;span class="vi"&gt;@move_list&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;shift&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;choose_new_offense&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;moves&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;size&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;
+      &lt;span class="no"&gt;ScriptedOpeningStrat&lt;/span&gt;
+    &lt;span class="k"&gt;elsif&lt;/span&gt; &lt;span class="n"&gt;games&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;moves&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;size&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;20&lt;/span&gt;
+      &lt;span class="no"&gt;ControlBoardCenterStrat&lt;/span&gt;
+    &lt;span class="k"&gt;else&lt;/span&gt;
+      &lt;span class="no"&gt;ShortestPathToCheckStrat&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+
+&lt;span class="k"&gt;end&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Determining the next move is a matter of first seeing if the AI player is in check This could be expanded to see if the AI player is in check in N more moves as well.
+Next check if there are moves remaining in the current &lt;code&gt;@move_list&lt;/code&gt; or if the next planned move from the &lt;code&gt;move_list&lt;/code&gt; is now invalid for one reason or another.  If
+either of these cases are true we&amp;#39;ll need to select a new offensive strategy.&lt;/p&gt;
+
+&lt;p&gt;I imagine offensive strategies fall into 3 buckets: repeat a scripted opening, try to control the center of the board by moving offensive pieces out, and finally figure out
+the shortest path to putting the enemy king in check.&lt;/p&gt;
+
+&lt;h3&gt;ScriptedOpening&lt;/h3&gt;
+
+&lt;p&gt;Thinking of openings as &amp;quot;scripted&amp;quot; is fairly close to how &lt;a href="http://en.wikipedia.org/wiki/Chess_opening"&gt;actual chess games&lt;/a&gt; are played.  There&amp;#39;s not a lot of thought that
+happens except choosing which opening to go with.  If the AI player is white, they can randomly picked from a pre-programmed list.  If the AI player is black it can randomly
+pick from a smaller sub-set of possibilities based on the human player&amp;#39;s first move, typically king or queen pawn.&lt;/p&gt;
+
+&lt;h3&gt;ControlBoardCenterStrat&lt;/h3&gt;
+
+&lt;p&gt;This is the first use of graph theory.  The position a piece can be in is a vertex and the positions into can go to are also a vertex and the action of making that move is
+the edge.  A breadth-first search of the imposed graph (moves/positions) would allow a search to go until either a center of the board was found or a certain number of moves
+was encountered.  The latter restriction is because we don&amp;#39;t want to have to have a piece hop all over taking 4 or 5 moves to control the center.  We want it to be 1 or 2 moves
+away.&lt;/p&gt;
+
+&lt;p&gt;Graph searching has some background but the A* algorithm is the general purpose workhorse for most applications.  Red Blob Games has an excellent &lt;a href="http://www.redblobgames.com/pathfinding/a-star/introduction.html"&gt;Introduction to A*&lt;/a&gt;
+which I highly recommend reading.&lt;/p&gt;
+
+&lt;p&gt;Since the algorithm can be used in a number of places I was playing around with implementing it using a ruby block to capture the &amp;quot;when to quit&amp;quot; condition.  This isn&amp;#39;t fully-formed
+code but it conveys the idea:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+15
+16
+17
+18
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;a_star&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;board&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;piece&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="o"&gt;&amp;amp;&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="n"&gt;frontier&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="no"&gt;Queue&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;new&lt;/span&gt;
+  &lt;span class="n"&gt;frontier&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;push&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;piece&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;pos&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="n"&gt;visited&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="p"&gt;{&lt;/span&gt; &lt;span class="p"&gt;}&lt;/span&gt;
+  &lt;span class="n"&gt;visited&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;piece&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;true&lt;/span&gt;
+
+  &lt;span class="n"&gt;current&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;frontier&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;pop&lt;/span&gt;
+  &lt;span class="k"&gt;while&lt;/span&gt; &lt;span class="o"&gt;!&lt;/span&gt;&lt;span class="n"&gt;frontier&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;empty?&lt;/span&gt; &lt;span class="n"&gt;and&lt;/span&gt; &lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;call&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;current&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;visited&lt;/span&gt;&lt;span class="p"&gt;,&lt;/span&gt; &lt;span class="n"&gt;frontier&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+    &lt;span class="n"&gt;piece&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;position&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;current&lt;/span&gt;
+    &lt;span class="n"&gt;piece&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;moves&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;each&lt;/span&gt; &lt;span class="k"&gt;do&lt;/span&gt; &lt;span class="o"&gt;|&lt;/span&gt;&lt;span class="n"&gt;possible_pos&lt;/span&gt;&lt;span class="o"&gt;|&lt;/span&gt;
+      &lt;span class="k"&gt;unless&lt;/span&gt; &lt;span class="n"&gt;visited&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;has_key?&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;possible_pos&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;frontier&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;push&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;possible_pos&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+        &lt;span class="n"&gt;visited&lt;/span&gt;&lt;span class="p"&gt;[&lt;/span&gt;&lt;span class="n"&gt;possible_pos&lt;/span&gt;&lt;span class="p"&gt;]&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="kp"&gt;true&lt;/span&gt;
+      &lt;span class="k"&gt;end&lt;/span&gt;
+    &lt;span class="k"&gt;end&lt;/span&gt;
+    &lt;span class="n"&gt;current&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;frontier&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;pop&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;The idea is that &lt;code&gt;&amp;amp;block&lt;/code&gt; is used to give the restrictions for the particular case we&amp;#39;re interested in.  For &lt;code&gt;ControlBoardCenterStrat&lt;/code&gt; we might want to limit the number of
+moves to &lt;code&gt;2&lt;/code&gt; and also stop if we&amp;#39;ve found the center of the board.  I imagine it would look like something to the effect of...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight plaintext"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;a_star(game.board, piece[0]) do |current_pos, visited, frontier|
+  current_pos == "d4" or
+  current_pos == "d5" or
+  current_pos == "e4" or
+  current_pos == "e5" or
+  visited &amp;gt; 2
+end
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h3&gt;ShortestPathToCheckStrat&lt;/h3&gt;
+
+&lt;p&gt;This strategy is similar to &lt;code&gt;ControlBoardCenterStrat&lt;/code&gt; except that it might have a priority list of pieces to try in order, say Rook, Queen, Bishop, and so on.  For each piece
+it would attempt to use the same A* algorithm to find the shortest path to check, regardless of length.  The strategy would choose the piece with the shortest path and execute
+that sequence, then try again with another piece.  One trick would be to avoid using the same piece to place the player in check over and over.  This could perhaps be it&amp;#39;s own
+strategy, &lt;code&gt;AnnoyWithOneStepCheckStrat&lt;/code&gt; or something along those lines.&lt;/p&gt;
+
+&lt;h2&gt;Improvements&lt;/h2&gt;
+
+&lt;p&gt;One thing I like about this approach is that there is a lot of room for improvements because of the separation between strategy implementation and choosing which strategy
+to run.  It avoids trying to have a huge block of if/thens and handle all these odd cases.  Even if you have two strategies that seemingly look alike, it makes more sense
+to have two strategies which each handle the nuance of their particularities.&lt;/p&gt;
+
+&lt;p&gt;The &lt;code&gt;choose_offensive_strat&lt;/code&gt; function is rather weak but easily improved.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="nf"&gt;choose_new_offense&lt;/span&gt;&lt;span class="p"&gt;(&lt;/span&gt;&lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;)&lt;/span&gt;
+  &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;game&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;moves&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;size&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;3&lt;/span&gt;            &lt;span class="c1"&gt;# early game&lt;/span&gt;
+    &lt;span class="no"&gt;ScriptedOpeningStrat&lt;/span&gt;
+  &lt;span class="k"&gt;elsif&lt;/span&gt; &lt;span class="n"&gt;games&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;graveyard&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;size&lt;/span&gt; &lt;span class="o"&gt;&amp;gt;=&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;  &lt;span class="c1"&gt;# late game&lt;/span&gt;
+    &lt;span class="no"&gt;ShortestPathToCheckStrat&lt;/span&gt;
+  &lt;span class="k"&gt;else&lt;/span&gt;                              &lt;span class="c1"&gt;# mid game&lt;/span&gt;
+    &lt;span class="no"&gt;ControlBoardCenterStrat&lt;/span&gt;
+  &lt;span class="k"&gt;end&lt;/span&gt;
+&lt;span class="k"&gt;end&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Picking a strategy based number of moves is a fairly weak way to go.  I considere the idea of an &lt;code&gt;Assessment&lt;/code&gt; or a encapsulated way to analyze the board.  For example,
+one assessment might be &lt;code&gt;ControlOfCenterAssessment&lt;/code&gt; which returns an &lt;code&gt;influence&lt;/code&gt; (number of pieces which are attacking a spot on the center of the board).  Or another
+assessment might be &lt;code&gt;SelfPawnStructureAssessment&lt;/code&gt; which returns an &lt;code&gt;influence&lt;/code&gt; reflecting the number of pawns that are in an advantageous position.  These could be used
+to make decisions about strategies instead of just something simple like the number of moves that have taken place.&lt;/p&gt;
+
+&lt;h2&gt;OO&lt;/h2&gt;
+
+&lt;p&gt;One thing I ran into which was less than stellar was that implementing the AI required me to &amp;quot;explore the graph&amp;quot; which is a fancy way of saying I needed to play out permutations
+of a board.  Typically a graph is stored, at least by it&amp;#39;s mathematical definition, as a set of vertices and a set of edges (which are themselves a 2 length set of vertices).
+Applying that to the game board there isn&amp;#39;t quite a 1:1 alignment.  Instead we have current position (starting vertex) and possible positions (neighboring vertices).  The
+edges are inferred.&lt;/p&gt;
+
+&lt;p&gt;Anyways, one thing I found was that to explore the graph I needed to create various modifications of the game board.  However with Ruby&amp;#39;s strong OO style the game board wasn&amp;#39;t
+just a few pieces of data but a whole object that had a 2D array within it, where the values in the 2D array were instance of piece objects.  From a Ruby perspective this
+makes a lot of sense.  However with my intent to rapidly created 100&amp;#39;s of these per move it didn&amp;#39;t seem like a good plan.&lt;/p&gt;
+
+&lt;p&gt;What I&amp;#39;d like to investigate is representing the game board as a very lightweight 2D array that only contains primitives (each piece type is represented by a number, pawn
+  is 1, rook is 2, etc.)  This way I can quickly spin up a bunch of variations fast and then have a large variety of functions to apply towards them.  In a real way I think
+  I&amp;#39;m preferring a funcitonal approach for this instead.&lt;/p&gt;
+
+&lt;h2&gt;UI&lt;/h2&gt;
+
+&lt;p&gt;The other reason I think I&amp;#39;m going to move away from Ruby for this project is that ultimately I want to be able to attach some kind of nice presentation to all this.  A
+console or Ruby GUI toolkit won&amp;#39;t quite match what the browser gives now days.  HTML, SVG, Canvas, and WebGL are all extremely accessible in browsers now days and for people
+like me who don&amp;#39;t want to get into a really complex game engine it&amp;#39;s a great way to get going fast without getting stuck in the weeds.  Whatever solution I pick I think the
+web as a platform is the route I&amp;#39;ll go.&lt;/p&gt;
+
+&lt;p&gt;A minor hiccup in this regard is should I or should I not go with a UI toolkit.  I&amp;#39;d like to spend more time with Angular or Ember however i worry that their view model approach
+would bind my game implementation too much to the UI.  In an ideal world the game would be implemented simply &amp;quot;in memory&amp;quot; and a presentation layer of HTML or SVG or whatever could
+just be &amp;quot;bolted&amp;quot; on the top after the fact without affecting the game.&lt;/p&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Visitor Pattern Revisited in Scala</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/visitor-pattern-in-scala.html"/>
+    <id>http://blog.url.com/blog/2014/visitor-pattern-in-scala.html</id>
+    <published>2014-09-30T07:00:00Z</published>
+    <updated>2017-11-17T08:30:45-07:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;The &amp;quot;visitor pattern&amp;quot; is one of those design patterns when reading in the abstract is hard to follow.  Before we look at how it might be useful
+in Scala, let&amp;#39;s first look at what the original pattern was and what problem it was trying to solve.&lt;/p&gt;
+
+&lt;p&gt;What if you have a handful of classes that share some common ancestry.  There must be behavior on all of them to do something but what
+if that behavior is outside the scope of the class?  This would be true when the behavior is extremely specific to one use case and thus would
+just pollute the class&amp;#39;s implementation.&lt;/p&gt;
+
+&lt;h4&gt;Scenario&lt;/h4&gt;
+
+&lt;p&gt;Say you&amp;#39;re writing a media player.  Most people want the basics: play, pause, skip song, playlist.  However you also want to have a plugin that
+allows DJ&amp;#39;s to calculate the BPM of a song.  We don&amp;#39;t want to clutter up the main player with behavior (BPM determination) that isn&amp;#39;t core to
+the product.&lt;/p&gt;
+
+&lt;p&gt;What is a way this problem could be solved?  As you probably guessed from the title and introduction the visitor pattern is one such approach.&lt;/p&gt;
+
+&lt;h2&gt;Vanilla Visitor&lt;/h2&gt;
+
+&lt;p&gt;We start by defining a visitor.  A visitor exposes one &lt;code&gt;visit&lt;/code&gt; method for every type the visitor will be used on.  This means that fundamentally
+the visitor pattern is based on &lt;a href="http://en.wikipedia.org/wiki/Function_overloading"&gt;method overloading&lt;/a&gt;.  In our simple case let&amp;#39;s assume we have
+an &lt;code&gt;Audio&lt;/code&gt; and a &lt;code&gt;Video&lt;/code&gt; class which both extend &lt;code&gt;trait Media&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;trait&lt;/span&gt; &lt;span class="nc"&gt;MediaVisitor&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;audio&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Audio&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Any&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;video&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Video&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Any&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Ignore the &lt;code&gt;Any&lt;/code&gt; return type.  We&amp;#39;ll come back to that in a second.  Next, every class in implements an &lt;code&gt;accept&lt;/code&gt; method that takes a visitor as it&amp;#39;s
+argument.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Audio&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Media&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;MediaVisitor&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Video&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Media&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;MediaVisitor&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;At this point any behavior we wanted to implement needs to implement the &lt;code&gt;MediaVisitor&lt;/code&gt; method.  Keeping with our scenario, we could have a BPM visitor.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;object&lt;/span&gt; &lt;span class="nc"&gt;BPMCalculator&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;MediaVisitor&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;audio&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Audio&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="c1"&gt;// ... do some magic to determine BPM from audio stream ...
+&lt;/span&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;video&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Video&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="c1"&gt;// ... extract audio stream
+&lt;/span&gt;    &lt;span class="c1"&gt;// ... do some magic to determine BPM from audio stream ...
+&lt;/span&gt;  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;To find the BPM of a song we could then pass &lt;code&gt;BPMCalculator&lt;/code&gt; to an instance of either &lt;code&gt;Audio&lt;/code&gt; or &lt;code&gt;Video&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;song&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nc"&gt;Song&lt;/span&gt;
+&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;bpm&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;song&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;BPMCalculator&lt;/span&gt;&lt;span class="o"&gt;).&lt;/span&gt;&lt;span class="n"&gt;asInstanceOf&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;h2&gt;Improvements with Scala&lt;/h2&gt;
+
+&lt;p&gt;The &lt;code&gt;asInstanceOf[Int]&lt;/code&gt; dangling off the end there is ugly.  And it&amp;#39;s a bad coding practice.  It means we haven&amp;#39;t &amp;quot;proven&amp;quot; our types to the compiler
+and so we must cheat and tell the compiler that it&amp;#39;s really that thing.&lt;/p&gt;
+
+&lt;p&gt;One thing we could start down the road of is changing the &lt;code&gt;MediaVisitor&lt;/code&gt; trait to allow the implementation to define the return type.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;trait&lt;/span&gt; &lt;span class="nc"&gt;MediaVisitor&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;audio&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Audio&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;video&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Video&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Our class implementations of &lt;code&gt;visit&lt;/code&gt; can now be updated too.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Audio&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Media&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;MediaVisitor&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;])&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+
+&lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;Video&lt;/span&gt; &lt;span class="k"&gt;extends&lt;/span&gt; &lt;span class="nc"&gt;Media&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;MediaVisitor&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;])&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;A&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="n"&gt;visitor&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;visit&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="k"&gt;this&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;When we invoke &lt;code&gt;accept&lt;/code&gt; now we can explicitly specify the return type.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;bpm&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;song&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="nc"&gt;BPMCalculator&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;However Scala&amp;#39;s type inference can actually figure it out, which means we can totally remove it leaving us with:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;song&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="k"&gt;new&lt;/span&gt; &lt;span class="nc"&gt;Song&lt;/span&gt;
+&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;bpm&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;song&lt;/span&gt;&lt;span class="o"&gt;.&lt;/span&gt;&lt;span class="n"&gt;accept&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="nc"&gt;BPMCalculator&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This is a decent improvement.  The visitor pattern in Scala now works as intended.&lt;/p&gt;
+
+&lt;h2&gt;Using Native Language Features&lt;/h2&gt;
+
+&lt;p&gt;Scala has other, probably better ways to solve this.  Implicit classes effectively allow extension methods on a class by combining a
+new class with an &lt;code&gt;implicit def&lt;/code&gt;.  Say we kept our &lt;code&gt;BPMCalculator&lt;/code&gt; object but turned it into a class and renamed the method from
+&lt;code&gt;visit&lt;/code&gt; to &lt;code&gt;calculateBpm&lt;/code&gt;.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+13
+14
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;object&lt;/span&gt; &lt;span class="nc"&gt;BPMCalculator&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;BPMCalculatorAudio&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;audio&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Audio&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;calculateBpm&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+      &lt;span class="c1"&gt;// ... do some magic to determine BPM from audio stream ...
+&lt;/span&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+
+  &lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;BPMCalculatorVideo&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;video&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Video&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{}&lt;/span&gt;
+    &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;calculateBpm&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+      &lt;span class="c1"&gt;// ... extract audio stream
+&lt;/span&gt;      &lt;span class="c1"&gt;// ... do some magic to determine BPM from audio stream ...
+&lt;/span&gt;    &lt;span class="o"&gt;}&lt;/span&gt;
+  &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;This &lt;code&gt;implicit class&lt;/code&gt; can live anywhere in the code, but when imported  (&lt;code&gt;import BPMCalculator._&lt;/code&gt;) makes the method &lt;code&gt;calculateBpm&lt;/code&gt;
+available on &lt;code&gt;Audio&lt;/code&gt; and &lt;code&gt;Video&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;Ultimately both the visitor pattern and the implicit class striving to implement the &lt;a href="http://en.wikipedia.org/wiki/Open/closed_principle"&gt;Open/Close Principle&lt;/a&gt;.
+Scala makes this possible wholey within the language.&lt;/p&gt;
+</content>
+  </entry>
+  <entry>
+    <title>Reproducing Coffeescript's Tail if/unless in Scala</title>
+    <link rel="alternate" href="http://blog.url.com/blog/2014/reproducing-rubys-unless-in-scala.html"/>
+    <id>http://blog.url.com/blog/2014/reproducing-rubys-unless-in-scala.html</id>
+    <published>2014-09-29T07:00:00Z</published>
+    <updated>2017-11-17T08:30:45-07:00</updated>
+    <author>
+      <name>Article Author</name>
+    </author>
+    <content type="html">&lt;p&gt;Both Ruby and Coffeescript allow &lt;code&gt;if&lt;/code&gt; and &lt;code&gt;unless&lt;/code&gt; (not if) in the tail position:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="n"&gt;do_some_side_effect&lt;/span&gt;&lt;span class="p"&gt;()&lt;/span&gt; &lt;span class="k"&gt;unless&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Where practitioners typically use it is when reading the line to be executed gives better context to what might be happening over
+starting a line of code with an if statement.  Compare these two:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight ruby"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;length&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+  &lt;span class="n"&gt;str&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;"default value"&lt;/span&gt;
+
+&lt;span class="c1"&gt;# vs.&lt;/span&gt;
+
+&lt;span class="n"&gt;str&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="s2"&gt;"default value"&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="n"&gt;str&lt;/span&gt;&lt;span class="p"&gt;.&lt;/span&gt;&lt;span class="nf"&gt;length&lt;/span&gt; &lt;span class="o"&gt;==&lt;/span&gt; &lt;span class="mi"&gt;0&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;There&amp;#39;s certainly pro&amp;#39;s and con&amp;#39;s to this approach.  Depending on the line length the &lt;code&gt;if str.length == 0&lt;/code&gt; part can easily get lost and
+it&amp;#39;s easy to read a function as &amp;quot;always set str to default value&amp;quot; until you realize there is an &lt;code&gt;if&lt;/code&gt; or &lt;code&gt;unless&lt;/code&gt; way off the
+screen to the right.&lt;/p&gt;
+
+&lt;p&gt;But I digress.  Here is the challenge: Can this feature be implemented in Scala?  There are two aspects to consider.&lt;/p&gt;
+
+&lt;p&gt;First, in Scala all branching statements are expressions.  That is &lt;code&gt;if&lt;/code&gt;, &lt;code&gt;match&lt;/code&gt;, and friends always return a value.  In considering the tail
+position if/unless, what if I wrote the following in Scala:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;7&lt;/span&gt; &lt;span class="n"&gt;unless&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;What &lt;em&gt;should&lt;/em&gt; happen?  We could throw an exception, but that&amp;#39;s not the expected behavior.  And it would make using this feature really annoying.
+One approach we could take is that a trailing conditional returns an &lt;code&gt;Option&lt;/code&gt;.  If the condition is met it returns &lt;code&gt;Some&lt;/code&gt; and when not met, &lt;code&gt;None&lt;/code&gt;.&lt;/p&gt;
+
+&lt;p&gt;A second consideration is that if the statement contains any kind of computation or side effect we certainly do not want to execute it if
+the condition is not true.  Consider the following code.  It should never print.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"haha"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;At this point the type signature for the Scala implementation is becoming clear:&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;IfUnlessMagic&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;unless&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Boolean&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;???&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Notice the &lt;code&gt;=&amp;gt;&lt;/code&gt; on &lt;code&gt;=&amp;gt;A&lt;/code&gt; of the first line.  This is known as &amp;quot;call by name&amp;quot; in the Scala world.  Scala includes two ways that arguments are passed:
+by name and by value.  In case the wording of those sounds confusing, it is.  Most of us coming from backgrounds in other languages are used to the
+concepts of &amp;quot;by reference&amp;quot; and &amp;quot;by value&amp;quot;.  In Scala passing an argument &amp;quot;by name&amp;quot; means that it is not immediately evaluated when the function is
+run but instead is evaluated every time the name is referenced in the subsequent code.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;byValue&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Unit&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"byValue"&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt; &lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="n"&gt;block&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+&lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;byName&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="nc"&gt;Unit&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"byName"&lt;/span&gt;&lt;span class="o"&gt;);&lt;/span&gt; &lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="o"&gt;;&lt;/span&gt; &lt;span class="n"&gt;block&lt;/span&gt; &lt;span class="o"&gt;}&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;byValue&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"a"&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt;
+&lt;span class="n"&gt;a&lt;/span&gt;
+&lt;span class="n"&gt;byValue&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;byName&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"b"&lt;/span&gt;&lt;span class="o"&gt;))&lt;/span&gt;
+&lt;span class="n"&gt;byName&lt;/span&gt;
+&lt;span class="n"&gt;b&lt;/span&gt;
+&lt;span class="n"&gt;b&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;Notice not only the number of times the block prints out, but also the order.  With by value the argument &lt;code&gt;block&lt;/code&gt; is evaluated when the function is
+applied.  That&amp;#39;s why &lt;code&gt;&amp;quot;a&amp;quot;&lt;/code&gt; is printed out first.  By name arguments are evaluated when their &amp;quot;name&amp;quot; is applied, thus why that function prints in
+the order they are listed in the function.&lt;/p&gt;
+
+&lt;p&gt;Back to the problem at hand, by making our implicit class take an argument by name it means that we won&amp;#39;t actually execute the block until our code
+decides to.  From there the implementation should be fairly obvious.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;IfUnlessMagic&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;unless&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Boolean&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="o"&gt;(!&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="nc"&gt;Some&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="nc"&gt;None&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;We can add an implementation of a tail position &lt;code&gt;if&lt;/code&gt; too, but &lt;code&gt;if&lt;/code&gt; is a reserved keyword so it&amp;#39;ll have to be something else.&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="k"&gt;implicit&lt;/span&gt; &lt;span class="k"&gt;class&lt;/span&gt; &lt;span class="nc"&gt;IfUnlessMagic&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;A&lt;/span&gt;&lt;span class="o"&gt;](&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="o"&gt;=&amp;gt;&lt;/span&gt;&lt;span class="n"&gt;A&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="o"&gt;{&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;iff&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Boolean&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="k"&gt;if&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="nc"&gt;Some&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;block&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;else&lt;/span&gt; &lt;span class="nc"&gt;None&lt;/span&gt;
+  &lt;span class="k"&gt;def&lt;/span&gt; &lt;span class="n"&gt;unless&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Boolean&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="n"&gt;iff&lt;/span&gt;&lt;span class="o"&gt;(!&lt;/span&gt;&lt;span class="n"&gt;cond&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;span class="o"&gt;}&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;And in use...&lt;/p&gt;
+&lt;div class="highlight"&gt;&lt;pre class="highlight scala"&gt;&lt;code&gt;&lt;table class="rouge-table"&gt;&lt;tbody&gt;&lt;tr&gt;&lt;td class="rouge-gutter gl"&gt;&lt;pre class="lineno"&gt;1
+2
+3
+4
+5
+6
+7
+8
+9
+10
+11
+12
+&lt;/pre&gt;&lt;/td&gt;&lt;td class="rouge-code"&gt;&lt;pre&gt;&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"HAHA"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;unless&lt;/span&gt; &lt;span class="kc"&gt;true&lt;/span&gt;
+&lt;span class="n"&gt;res1&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Option&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Unit&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;None&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="n"&gt;println&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="s"&gt;"HAHA"&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt; &lt;span class="n"&gt;unless&lt;/span&gt; &lt;span class="kc"&gt;false&lt;/span&gt;
+&lt;span class="nc"&gt;HAHA&lt;/span&gt;
+&lt;span class="n"&gt;res2&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Option&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Unit&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Some&lt;/span&gt;&lt;span class="o"&gt;(())&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+&lt;span class="n"&gt;x&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Int&lt;/span&gt; &lt;span class="o"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;10&lt;/span&gt;
+
+&lt;span class="n"&gt;scala&lt;/span&gt;&lt;span class="o"&gt;&amp;gt;&lt;/span&gt; &lt;span class="k"&gt;val&lt;/span&gt; &lt;span class="n"&gt;y&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="mi"&gt;7&lt;/span&gt; &lt;span class="n"&gt;iff&lt;/span&gt; &lt;span class="n"&gt;x&lt;/span&gt; &lt;span class="o"&gt;&amp;lt;&lt;/span&gt; &lt;span class="mi"&gt;20&lt;/span&gt;
+&lt;span class="n"&gt;y&lt;/span&gt;&lt;span class="k"&gt;:&lt;/span&gt; &lt;span class="kt"&gt;Option&lt;/span&gt;&lt;span class="o"&gt;[&lt;/span&gt;&lt;span class="kt"&gt;Int&lt;/span&gt;&lt;span class="o"&gt;]&lt;/span&gt; &lt;span class="k"&gt;=&lt;/span&gt; &lt;span class="nc"&gt;Some&lt;/span&gt;&lt;span class="o"&gt;(&lt;/span&gt;&lt;span class="mi"&gt;7&lt;/span&gt;&lt;span class="o"&gt;)&lt;/span&gt;
+&lt;/pre&gt;&lt;/td&gt;&lt;/tr&gt;&lt;/tbody&gt;&lt;/table&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
+&lt;p&gt;I don&amp;#39;t know how useful this actually is in Scala (I suspect &amp;quot;not very&amp;quot;), but it is possible and a fun mental challenge if nothing else.&lt;/p&gt;
+</content>
+  </entry>
+</feed>
